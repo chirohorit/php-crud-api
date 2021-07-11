@@ -1,8 +1,8 @@
 <?php
 /**
- * PHP-CRUD-API v2              License: MIT
- * Maurits van der Schee: maurits@vdschee.nl
- * https://github.com/mevdschee/php-crud-api
+ * PHP-CRUD-ADMIN v2              License: MIT
+ * Maurits van der Schee:   maurits@vdschee.nl
+ * https://github.com/mevdschee/php-crud-admin
  *
  * Dependencies:
  * - vendor/psr/*: PHP-FIG
@@ -10,6 +10,413 @@
  * - vendor/nyholm/*: Tobias Nyholm
  *   https://github.com/Nyholm
  **/
+
+namespace {
+    global $_HTML;
+    $_HTML = array();
+}
+
+// file: templates/column/create.html
+namespace {
+$_HTML['column/create'] = <<<'END_OF_HTML'
+<ul class="breadcrumb">
+    <li><a href="{{base}}/admin/table/list">home</a></li>
+    <li><a href="{{base}}/admin/column/{{table}}/list">{{table}}</a></li>
+</ul>
+
+<h2>create column</h2>
+
+<form class="form-horizontal" method="post">
+    {{for:field:key:form}}
+        <div class="form-group">
+            <label class="control-label col-sm-2" for="{{key}}">{{key}}{{if:field.required}}*{{endif}}</label>
+            <div class="col-sm-7">
+                {{if:field.type|eq("select")}}
+                    <select id="{{key}}" name="{{key}}" class="form-control"{{if:field.required}} required{{endif}}>
+                        <option value=""></option>
+                        {{for:v:k:field.values}}
+                            <option value="{{k}}"{{if:k|eq(field.value)}} selected{{endif}}>{{v}}</option>
+                        {{endfor}}
+                    </select>
+                {{else}}
+                    <input class="form-control" id="{{key}}" name="{{key}}" type="{{field.type}}" value="{{field.value}}"{{if:field.required}} required{{endif}}>
+                {{endif}}
+            </div>
+        </div>
+    {{endfor}}
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
+
+END_OF_HTML;
+}
+
+// file: templates/column/created.html
+namespace {
+$_HTML['column/created'] = <<<'END_OF_HTML'
+<ul class="breadcrumb">
+    <li><a href="{{base}}/admin/table/list">home</a></li>
+    <li><a href="{{base}}/admin/column/{{table}}/list">{{table}}</a></li>
+</ul>
+
+<h2>create column</h2>
+
+<p>Created {{name}}: {{success}}</p>
+
+<p><a href="{{base}}/admin/column/{{table}}/list" class="btn btn-primary">Ok</a></p>
+END_OF_HTML;
+}
+
+// file: templates/column/delete.html
+namespace {
+$_HTML['column/delete'] = <<<'END_OF_HTML'
+<ul class="breadcrumb">
+    <li><a href="{{base}}/admin/table/list">home</a></li>
+    <li><a href="{{base}}/admin/column/{{table}}/list">{{table}}</a></li>
+</ul>
+
+<h2>delete column</h2>
+
+<p>You are about to delete the column named "{{name}}"</p>
+
+<p>The action cannot be undone.</p>
+
+<form method="post">
+    <input type="hidden" name="name" value="{{name}}"/>
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a href="{{base}}/admin/column/{{table}}/update/{{name}}" class="btn btn-default">Cancel</a>
+</form>
+END_OF_HTML;
+}
+
+// file: templates/column/deleted.html
+namespace {
+$_HTML['column/deleted'] = <<<'END_OF_HTML'
+<ul class="breadcrumb">
+    <li><a href="{{base}}/admin/table/list">home</a></li>
+    <li><a href="{{base}}/admin/column/{{table}}/list">{{table}}</a></li>
+</ul>
+
+<h2>delete column</h2>
+
+<p>Deleted {{name}}: {{success}}</p>
+
+<p><a href="{{base}}/admin/column/{{table}}/list" class="btn btn-primary">Ok</a></p>
+END_OF_HTML;
+}
+
+// file: templates/column/list.html
+namespace {
+$_HTML['column/list'] = <<<'END_OF_HTML'
+<ul class="breadcrumb">
+    <li><a href="{{base}}/admin/table/list">home</a></li>
+    <li><a href="{{base}}/admin/column/{{table}}/list">{{table}}</a></li>
+</ul>
+
+<h2>list columns</h2>
+
+<table class="table"><thead>
+    <tr>
+        <th></th>
+        <th>name</th>
+        <th>type</th>
+        <th>length</th>
+        <th>precision</th>
+        <th>scale</th>
+        <th>nullable</th>
+        <th>pk</th>
+        <th>fk</th>
+    </tr>
+</thead><tbody>
+{{for:column:columns}}
+    <tr>
+        <td><a href="{{base}}/admin/column/{{table}}/update/{{column.name}}">edit</a></td>
+        <td>{{column.name}}</td>
+        <td>{{column.type}}</td>
+        <td>{{column.length|or("-")}}</td>
+        <td>{{column.precision|or("-")}}</td>
+        <td>{{column.scale|or("-")}}</td>
+        <td>{{column.nullable|bool("yes","-")}}</td>
+        <td>{{column.pk|bool("yes","-")}}</td>
+        <td>
+            {{if:column.fk}}
+                <a href="{{base}}/admin/column/{{column.fk}}/list">{{column.fk}}</a>
+            {{else}}
+                -
+            {{endif}}
+        </td>
+    </tr>
+{{endfor}}
+</tbody></table>
+
+<p>
+    <a class="btn btn-primary" href="{{base}}/admin/column/{{table}}/create">Add column</a>
+    <a class="btn btn-danger" href="{{base}}/admin/table/delete/{{table}}">Delete table</a>
+</p>
+END_OF_HTML;
+}
+
+// file: templates/column/update.html
+namespace {
+$_HTML['column/update'] = <<<'END_OF_HTML'
+<ul class="breadcrumb">
+    <li><a href="{{base}}/admin/table/list">home</a></li>
+    <li><a href="{{base}}/admin/column/{{table}}/list">{{table}}</a></li>
+</ul>
+
+<h2>update column</h2>
+
+<form class="form-horizontal" method="post">
+    {{for:field:key:form}}
+        <div class="form-group">
+            <label class="control-label col-sm-2" for="{{key}}">{{key}}{{if:field.required}}*{{endif}}</label>
+            <div class="col-sm-7">
+                {{if:field.type|eq("select")}}
+                    <select id="{{key}}" name="{{key}}" class="form-control"{{if:field.required}} required{{endif}}>
+                        <option value=""></option>
+                        {{for:v:k:field.values}}
+                            <option value="{{k}}"{{if:k|eq(field.value)}} selected{{endif}}>{{v}}</option>
+                        {{endfor}}
+                    </select>
+                {{else}}
+                    <input class="form-control" id="{{key}}" name="{{key}}" type="{{field.type}}" value="{{field.value}}"{{if:field.required}} required{{endif}}>
+                {{endif}}
+            </div>
+        </div>
+    {{endfor}}
+    <p>
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a class="btn btn-danger" href="{{base}}/admin/column/{{table}}/delete/{{name}}">Delete</a>
+    </p>
+    
+</form>
+
+END_OF_HTML;
+}
+
+// file: templates/column/updated.html
+namespace {
+$_HTML['column/updated'] = <<<'END_OF_HTML'
+<ul class="breadcrumb">
+    <li><a href="{{base}}/admin/table/list">home</a></li>
+    <li><a href="{{base}}/admin/column/{{table}}/list">{{table}}</a></li>
+</ul>
+    
+<h2>update column</h2>
+
+<p>Updated {{name}}: {{success}}</p>
+
+<p><a href="{{base}}/admin/column/{{table}}/list" class="btn btn-primary">Ok</a></p>
+END_OF_HTML;
+}
+
+// file: templates/error/show.html
+namespace {
+$_HTML['error/show'] = <<<'END_OF_HTML'
+<ul class="breadcrumb">
+    <li><a href="{{base}}/admin/table/list">home</a></li>
+</ul>
+
+<h2>error</h2>
+
+<strong>code:</strong><br/>
+<p>{{code}}</p>
+
+<strong>message:</strong><br/>
+<p>{{message}}</p>
+
+<strong>details:</strong><br/>
+<pre>{{details}}</pre>
+END_OF_HTML;
+}
+
+// file: templates/layouts/default.html
+namespace {
+$_HTML['layouts/default'] = <<<'END_OF_HTML'
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>PHP-CRUD-ADMIN</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap-theme.min.css" rel="stylesheet">
+    </head>
+    <body>
+        <div class="container">
+            <nav class="navbar navbar-default">
+                <div class="container-fluid">
+                    <div class="navbar-header">
+                        <a class="navbar-brand" href="{{base}}/admin/table/list">PHP-CRUD-ADMIN</a>
+                    </div>
+                </div>
+            </nav>
+            <div class="row">
+                <div class="col-md-3">
+                    <ul class="nav nav-pills nav-stacked">
+                        {{for:item:menu}}
+                            <li{{if:item|eq(table)}} class="active"{{endif}}>
+                                <a href="{{base}}/admin/column/{{item}}/list">{{item}}</a>
+                            </li>
+                        {{endfor}}
+                    </ul>
+                </div>
+                <div class="col-md-9">
+                    {{content}}
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
+END_OF_HTML;
+}
+
+// file: templates/layouts/error.html
+namespace {
+$_HTML['layouts/error'] = <<<'END_OF_HTML'
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>PHP-CRUD-ADMIN</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap-theme.min.css" rel="stylesheet">
+    </head>
+    <body>
+        <div class="container">
+            <nav class="navbar navbar-default">
+                <div class="container-fluid">
+                    <div class="navbar-header">
+                        <a class="navbar-brand" href="{{base}}/admin/table/list">PHP-CRUD-ADMIN</a>
+                    </div>
+                </div>
+            </nav>
+            <div class="row">
+                <div class="col-md-3">
+                    <ul class="nav nav-pills nav-stacked">
+                        {{for:item:menu}}
+                            <li{{if:item|eq(table)}} class="active"{{endif}}>
+                                <a href="{{base}}/admin/column/{{item}}/list">{{item}}</a>
+                            </li>
+                        {{endfor}}
+                    </ul>
+                </div>
+                <div class="col-md-9">
+                    {{content}}
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
+END_OF_HTML;
+}
+
+// file: templates/table/create.html
+namespace {
+$_HTML['table/create'] = <<<'END_OF_HTML'
+<ul class="breadcrumb">
+    <li><a href="{{base}}/admin/table/list">home</a></li>
+</ul>
+
+<h2>create table</h2>
+
+<form class="form-horizontal" method="post">
+    {{for:field:key:form}}
+        <div class="form-group">
+            <label class="control-label col-sm-2" for="{{key}}">{{key}}{{if:field.required}}*{{endif}}</label>
+            <div class="col-sm-7">
+                {{if:field.type|eq("select")}}
+                    <select id="{{key}}" name="{{key}}" class="form-control"{{if:field.required}} required{{endif}}>
+                        <option value=""></option>
+                        {{for:v:k:field.values}}
+                            <option value="{{k}}"{{if:k|eq(field.value)}} selected{{endif}}>{{v}}</option>
+                        {{endfor}}
+                    </select>
+                {{else}}
+                    <input class="form-control" id="{{key}}" name="{{key}}" type="{{field.type}}" value="{{field.value}}"{{if:field.required}} required{{endif}}>
+                {{endif}}
+            </div>
+        </div>
+    {{endfor}}
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
+END_OF_HTML;
+}
+
+// file: templates/table/created.html
+namespace {
+$_HTML['table/created'] = <<<'END_OF_HTML'
+<ul class="breadcrumb">
+    <li><a href="{{base}}/admin/table/list">home</a></li>
+</ul>
+
+<h2>create table</h2>
+
+<p>Created {{name}}: {{success}}</p>
+
+<p><a href="{{base}}/admin/table/list" class="btn btn-primary">Ok</a></p>
+END_OF_HTML;
+}
+
+// file: templates/table/delete.html
+namespace {
+$_HTML['table/delete'] = <<<'END_OF_HTML'
+<ul class="breadcrumb">
+    <li><a href="{{base}}/admin/table/list">home</a></li>
+    <li><a href="{{base}}/admin/column/{{table}}/list">{{table}}</a></li>
+</ul>
+
+<h2>delete table</h2>
+
+<p>The action cannot be undone.</p>
+
+<form method="post">
+    <input type="hidden" name="name" value="{{table}}"/>
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a href="{{base}}/admin/column/{{table}}/list" class="btn btn-default">Cancel</a>
+</form>
+END_OF_HTML;
+}
+
+// file: templates/table/deleted.html
+namespace {
+$_HTML['table/deleted'] = <<<'END_OF_HTML'
+<ul class="breadcrumb">
+    <li><a href="{{base}}/admin/table/list">home</a></li>
+    <li><a href="{{base}}/admin/column/{{table}}/list">{{table}}</a></li>
+</ul>
+
+<h2>delete table</h2>
+
+<p>Deleted {{table}}: {{success}}</p>
+
+<p><a href="{{base}}/admin/table/list" class="btn btn-primary">Ok</a></p>
+END_OF_HTML;
+}
+
+// file: templates/table/list.html
+namespace {
+$_HTML['table/list'] = <<<'END_OF_HTML'
+<ul class="breadcrumb">
+    <li><a href="{{base}}/admin/table/list">home</a></li>
+</ul>
+
+<h2>list tables</h2>
+
+<table class="table"><thead>
+    <tr>
+        <th>name</th>
+    </tr>
+</thead><tbody>
+{{for:table:tables}}
+    <tr>
+        <td><a href="{{base}}/admin/column/{{table}}/list">{{table}}</a></td>
+    </tr>
+{{endfor}}
+</tbody></table>
+
+<p><a href="{{base}}/admin/table/create" class="btn btn-primary">Add table</a></p>
+
+END_OF_HTML;
+}
 
 // file: vendor/psr/http-factory/src/RequestFactoryInterface.php
 namespace Psr\Http\Message {
@@ -1488,10 +1895,8 @@ namespace Nyholm\Psr7\Factory {
     /**
      * @author Tobias Nyholm <tobias.nyholm@gmail.com>
      * @author Martijn van der Ven <martijn@vanderven.se>
-     *
-     * @final This class should never be extended. See https://github.com/Nyholm/psr7/blob/master/doc/final.md
      */
-    class Psr17Factory implements RequestFactoryInterface, ResponseFactoryInterface, ServerRequestFactoryInterface, StreamFactoryInterface, UploadedFileFactoryInterface, UriFactoryInterface
+    final class Psr17Factory implements RequestFactoryInterface, ResponseFactoryInterface, ServerRequestFactoryInterface, StreamFactoryInterface, UploadedFileFactoryInterface, UriFactoryInterface
     {
         public function createRequest(string $method, $uri): RequestInterface
         {
@@ -1605,12 +2010,12 @@ namespace Nyholm\Psr7 {
 
         public function hasHeader($header): bool
         {
-            return isset($this->headerNames[\strtr($header, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')]);
+            return isset($this->headerNames[\strtolower($header)]);
         }
 
         public function getHeader($header): array
         {
-            $header = \strtr($header, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
+            $header = \strtolower($header);
             if (!isset($this->headerNames[$header])) {
                 return [];
             }
@@ -1628,7 +2033,7 @@ namespace Nyholm\Psr7 {
         public function withHeader($header, $value): self
         {
             $value = $this->validateAndTrimHeader($header, $value);
-            $normalized = \strtr($header, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
+            $normalized = \strtolower($header);
 
             $new = clone $this;
             if (isset($new->headerNames[$normalized])) {
@@ -1654,7 +2059,7 @@ namespace Nyholm\Psr7 {
 
         public function withoutHeader($header): self
         {
-            $normalized = \strtr($header, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
+            $normalized = \strtolower($header);
             if (!isset($this->headerNames[$normalized])) {
                 return $this;
             }
@@ -1690,13 +2095,8 @@ namespace Nyholm\Psr7 {
         private function setHeaders(array $headers) /*:void*/
         {
             foreach ($headers as $header => $value) {
-                if (\is_int($header)) {
-                    // If a header name was set to a numeric string, PHP will cast the key to an int.
-                    // We must cast it back to a string in order to comply with validation.
-                    $header = (string) $header;
-                }
                 $value = $this->validateAndTrimHeader($header, $value);
-                $normalized = \strtr($header, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
+                $normalized = \strtolower($header);
                 if (isset($this->headerNames[$normalized])) {
                     $header = $this->headerNames[$normalized];
                     $this->headers[$header] = \array_merge($this->headers[$header], $value);
@@ -1767,10 +2167,8 @@ namespace Nyholm\Psr7 {
     /**
      * @author Tobias Nyholm <tobias.nyholm@gmail.com>
      * @author Martijn van der Ven <martijn@vanderven.se>
-     *
-     * @final This class should never be extended. See https://github.com/Nyholm/psr7/blob/master/doc/final.md
      */
-    class Request implements RequestInterface
+    final class Request implements RequestInterface
     {
         use MessageTrait;
         use RequestTrait;
@@ -1926,10 +2324,8 @@ namespace Nyholm\Psr7 {
      * @author Michael Dowling and contributors to guzzlehttp/psr7
      * @author Tobias Nyholm <tobias.nyholm@gmail.com>
      * @author Martijn van der Ven <martijn@vanderven.se>
-     *
-     * @final This class should never be extended. See https://github.com/Nyholm/psr7/blob/master/doc/final.md
      */
-    class Response implements ResponseInterface
+    final class Response implements ResponseInterface
     {
         use MessageTrait;
 
@@ -1991,7 +2387,7 @@ namespace Nyholm\Psr7 {
 
             $code = (int) $code;
             if ($code < 100 || $code > 599) {
-                throw new \InvalidArgumentException(\sprintf('Status code has to be an integer between 100 and 599. A status code of %d was given', $code));
+                throw new \InvalidArgumentException('Status code has to be an integer between 100 and 599');
             }
 
             $new = clone $this;
@@ -2015,10 +2411,8 @@ namespace Nyholm\Psr7 {
      * @author Michael Dowling and contributors to guzzlehttp/psr7
      * @author Tobias Nyholm <tobias.nyholm@gmail.com>
      * @author Martijn van der Ven <martijn@vanderven.se>
-     *
-     * @final This class should never be extended. See https://github.com/Nyholm/psr7/blob/master/doc/final.md
      */
-    class ServerRequest implements ServerRequestInterface
+    final class ServerRequest implements ServerRequestInterface
     {
         use MessageTrait;
         use RequestTrait;
@@ -2173,17 +2567,13 @@ namespace Nyholm\Psr7 {
 namespace Nyholm\Psr7 {
 
     use Psr\Http\Message\StreamInterface;
-    use Symfony\Component\Debug\ErrorHandler as SymfonyLegacyErrorHandler;
-    use Symfony\Component\ErrorHandler\ErrorHandler as SymfonyErrorHandler;
 
     /**
      * @author Michael Dowling and contributors to guzzlehttp/psr7
      * @author Tobias Nyholm <tobias.nyholm@gmail.com>
      * @author Martijn van der Ven <martijn@vanderven.se>
-     *
-     * @final This class should never be extended. See https://github.com/Nyholm/psr7/blob/master/doc/final.md
      */
-    class Stream implements StreamInterface
+    final class Stream implements StreamInterface
     {
         /** @var resource|null A resource reference */
         private $stream;
@@ -2197,7 +2587,7 @@ namespace Nyholm\Psr7 {
         /** @var bool */
         private $writable;
 
-        /** @var array|mixed|void|bool|null */
+        /** @var array|mixed|void|null */
         private $uri;
 
         /** @var int|null */
@@ -2228,6 +2618,8 @@ namespace Nyholm\Psr7 {
          *
          * @param string|resource|StreamInterface $body
          *
+         * @return StreamInterface
+         *
          * @throws \InvalidArgumentException
          */
         public static function create($body = ''): StreamInterface
@@ -2249,6 +2641,7 @@ namespace Nyholm\Psr7 {
                 $new->seekable = $meta['seekable'] && 0 === \fseek($new->stream, 0, \SEEK_CUR);
                 $new->readable = isset(self::READ_WRITE_HASH['read'][$meta['mode']]);
                 $new->writable = isset(self::READ_WRITE_HASH['write'][$meta['mode']]);
+                $new->uri = $new->getMetadata('uri');
 
                 return $new;
             }
@@ -2264,10 +2657,7 @@ namespace Nyholm\Psr7 {
             $this->close();
         }
 
-        /**
-         * @return string
-         */
-        public function __toString()
+        public function __toString(): string
         {
             try {
                 if ($this->isSeekable()) {
@@ -2275,20 +2665,7 @@ namespace Nyholm\Psr7 {
                 }
 
                 return $this->getContents();
-            } catch (\Throwable $e) {
-                if (\PHP_VERSION_ID >= 70400) {
-                    throw $e;
-                }
-
-                if (\is_array($errorHandler = \set_error_handler('var_dump'))) {
-                    $errorHandler = $errorHandler[0] ?? null;
-                }
-                \restore_error_handler();
-
-                if ($e instanceof \Error || $errorHandler instanceof SymfonyErrorHandler || $errorHandler instanceof SymfonyLegacyErrorHandler) {
-                    return \trigger_error((string) $e, \E_USER_ERROR);
-                }
-
+            } catch (\Exception $e) {
                 return '';
             }
         }
@@ -2317,15 +2694,6 @@ namespace Nyholm\Psr7 {
             return $result;
         }
 
-        private function getUri()
-        {
-            if (false !== $this->uri) {
-                $this->uri = $this->getMetadata('uri') ?? false;
-            }
-
-            return $this->uri;
-        }
-
         public function getSize() /*:?int*/
         {
             if (null !== $this->size) {
@@ -2337,8 +2705,8 @@ namespace Nyholm\Psr7 {
             }
 
             // Clear the stat cache if the stream has a URI
-            if ($uri = $this->getUri()) {
-                \clearstatcache(true, $uri);
+            if ($this->uri) {
+                \clearstatcache(true, $this->uri);
             }
 
             $stats = \fstat($this->stream);
@@ -2418,11 +2786,7 @@ namespace Nyholm\Psr7 {
                 throw new \RuntimeException('Cannot read from non-readable stream');
             }
 
-            if (false === $result = \fread($this->stream, $length)) {
-                throw new \RuntimeException('Unable to read from stream');
-            }
-
-            return $result;
+            return \fread($this->stream, $length);
         }
 
         public function getContents(): string
@@ -2464,10 +2828,8 @@ namespace Nyholm\Psr7 {
      * @author Michael Dowling and contributors to guzzlehttp/psr7
      * @author Tobias Nyholm <tobias.nyholm@gmail.com>
      * @author Martijn van der Ven <martijn@vanderven.se>
-     *
-     * @final This class should never be extended. See https://github.com/Nyholm/psr7/blob/master/doc/final.md
      */
-    class UploadedFile implements UploadedFileInterface
+    final class UploadedFile implements UploadedFileInterface
     {
         /** @var array */
         /*private*/ const ERRORS = [
@@ -2640,10 +3002,8 @@ namespace Nyholm\Psr7 {
      * @author Matthew Weier O'Phinney
      * @author Tobias Nyholm <tobias.nyholm@gmail.com>
      * @author Martijn van der Ven <martijn@vanderven.se>
-     *
-     * @final This class should never be extended. See https://github.com/Nyholm/psr7/blob/master/doc/final.md
      */
-    class Uri implements UriInterface
+    final class Uri implements UriInterface
     {
         /*private*/ const SCHEMES = ['http' => 80, 'https' => 443];
 
@@ -2680,9 +3040,9 @@ namespace Nyholm\Psr7 {
                 }
 
                 // Apply parse_url parts to a URI.
-                $this->scheme = isset($parts['scheme']) ? \strtr($parts['scheme'], 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') : '';
+                $this->scheme = isset($parts['scheme']) ? \strtolower($parts['scheme']) : '';
                 $this->userInfo = $parts['user'] ?? '';
-                $this->host = isset($parts['host']) ? \strtr($parts['host'], 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') : '';
+                $this->host = isset($parts['host']) ? \strtolower($parts['host']) : '';
                 $this->port = isset($parts['port']) ? $this->filterPort($parts['port']) : null;
                 $this->path = isset($parts['path']) ? $this->filterPath($parts['path']) : '';
                 $this->query = isset($parts['query']) ? $this->filterQueryAndFragment($parts['query']) : '';
@@ -2757,7 +3117,7 @@ namespace Nyholm\Psr7 {
                 throw new \InvalidArgumentException('Scheme must be a string');
             }
 
-            if ($this->scheme === $scheme = \strtr($scheme, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')) {
+            if ($this->scheme === $scheme = \strtolower($scheme)) {
                 return $this;
             }
 
@@ -2791,7 +3151,7 @@ namespace Nyholm\Psr7 {
                 throw new \InvalidArgumentException('Host must be a string');
             }
 
-            if ($this->host === $host = \strtr($host, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')) {
+            if ($this->host === $host = \strtolower($host)) {
                 return $this;
             }
 
@@ -2988,30 +3348,13 @@ namespace Nyholm\Psr7Server {
 
             $headers = \function_exists('getallheaders') ? getallheaders() : static::getHeadersFromServer($_SERVER);
 
-            $post = null;
-            if ('POST' === $this->getMethodFromEnv($server)) {
-                foreach ($headers as $headerName => $headerValue) {
-                    if (true === \is_int($headerName) || 'content-type' !== \strtolower($headerName)) {
-                        continue;
-                    }
-                    if (\in_array(
-                        \strtolower(\trim(\explode(';', $headerValue, 2)[0])),
-                        ['application/x-www-form-urlencoded', 'multipart/form-data']
-                    )) {
-                        $post = $_POST;
-
-                        break;
-                    }
-                }
-            }
-
-            return $this->fromArrays($server, $headers, $_COOKIE, $_GET, $post, $_FILES, \fopen('php://input', 'r') ?: null);
+            return $this->fromArrays($server, $headers, $_COOKIE, $_GET, $_POST, $_FILES, fopen('php://input', 'r') ?: null);
         }
 
         /**
          * {@inheritdoc}
          */
-        public function fromArrays(array $server, array $headers = [], array $cookie = [], array $get = [], /*?array*/ $post = null, array $files = [], $body = null): ServerRequestInterface
+        public function fromArrays(array $server, array $headers = [], array $cookie = [], array $get = [], array $post = [], array $files = [], $body = null): ServerRequestInterface
         {
             $method = $this->getMethodFromEnv($server);
             $uri = $this->getUriFromEnvWithHTTP($server);
@@ -3019,11 +3362,6 @@ namespace Nyholm\Psr7Server {
 
             $serverRequest = $this->serverRequestFactory->createServerRequest($method, $uri, $server);
             foreach ($headers as $name => $value) {
-                // Because PHP automatically casts array keys set with numeric strings to integers, we have to make sure
-                // that numeric headers will not be sent along as integers, as withAddedHeader can only accept strings.
-                if (\is_int($name)) {
-                    $name = (string) $name;
-                }
                 $serverRequest = $serverRequest->withAddedHeader($name, $value);
             }
 
@@ -3050,7 +3388,7 @@ namespace Nyholm\Psr7Server {
         }
 
         /**
-         * Implementation from Laminas\Diactoros\marshalHeadersFromSapi().
+         * Implementation from Zend\Diactoros\marshalHeadersFromSapi().
          */
         public static function getHeadersFromServer(array $server): array
         {
@@ -3149,14 +3487,10 @@ namespace Nyholm\Psr7Server {
                 return $this->normalizeNestedFileSpec($value);
             }
 
-            if (UPLOAD_ERR_OK !== $value['error']) {
+            try {
+                $stream = $this->streamFactory->createStreamFromFile($value['tmp_name']);
+            } catch (\RuntimeException $e) {
                 $stream = $this->streamFactory->createStream();
-            } else {
-                try {
-                    $stream = $this->streamFactory->createStreamFromFile($value['tmp_name']);
-                } catch (\RuntimeException $e) {
-                    $stream = $this->streamFactory->createStream();
-                }
             }
 
             return $this->uploadedFileFactory->createUploadedFile(
@@ -3173,6 +3507,8 @@ namespace Nyholm\Psr7Server {
          *
          * Loops through all nested files and returns a normalized array of
          * UploadedFileInterface instances.
+         *
+         * @param array $files
          *
          * @return UploadedFileInterface[]
          */
@@ -3203,28 +3539,20 @@ namespace Nyholm\Psr7Server {
         {
             $uri = $this->uriFactory->createUri('');
 
-            if (isset($server['HTTP_X_FORWARDED_PROTO'])) {
-                $uri = $uri->withScheme($server['HTTP_X_FORWARDED_PROTO']);
-            } else {
-                if (isset($server['REQUEST_SCHEME'])) {
-                    $uri = $uri->withScheme($server['REQUEST_SCHEME']);
-                } elseif (isset($server['HTTPS'])) {
-                    $uri = $uri->withScheme('on' === $server['HTTPS'] ? 'https' : 'http');
-                }
-
-                if (isset($server['SERVER_PORT'])) {
-                    $uri = $uri->withPort($server['SERVER_PORT']);
-                }
+            if (isset($server['REQUEST_SCHEME'])) {
+                $uri = $uri->withScheme($server['REQUEST_SCHEME']);
+            } elseif (isset($server['HTTPS'])) {
+                $uri = $uri->withScheme('on' === $server['HTTPS'] ? 'https' : 'http');
             }
 
             if (isset($server['HTTP_HOST'])) {
-                if (1 === \preg_match('/^(.+)\:(\d+)$/', $server['HTTP_HOST'], $matches)) {
-                    $uri = $uri->withHost($matches[1])->withPort($matches[2]);
-                } else {
-                    $uri = $uri->withHost($server['HTTP_HOST']);
-                }
+                $uri = $uri->withHost($server['HTTP_HOST']);
             } elseif (isset($server['SERVER_NAME'])) {
                 $uri = $uri->withHost($server['SERVER_NAME']);
+            }
+
+            if (isset($server['SERVER_PORT'])) {
+                $uri = $uri->withPort($server['SERVER_PORT']);
             }
 
             if (isset($server['REQUEST_URI'])) {
@@ -3270,7 +3598,7 @@ namespace Nyholm\Psr7Server {
          * @param array                                $headers typically the output of getallheaders() or similar structure
          * @param array                                $cookie  typically $_COOKIE or similar structure
          * @param array                                $get     typically $_GET or similar structure
-         * @param array|null                           $post    typically $_POST or similar structure, represents parsed request body
+         * @param array                                $post    typically $_POST or similar structure
          * @param array                                $files   typically $_FILES or similar structure
          * @param StreamInterface|resource|string|null $body    Typically stdIn
          *
@@ -3280,7 +3608,8 @@ namespace Nyholm\Psr7Server {
             array $server,
             array $headers = [],
             array $cookie = [],
-            array $get = [], /*?array*/ $post = null,
+            array $get = [],
+            array $post = [],
             array $files = [],
             $body = null
         ): ServerRequestInterface;
@@ -3289,47 +3618,14 @@ namespace Nyholm\Psr7Server {
          * Get parsed headers from ($_SERVER) array.
          *
          * @param array $server typically $_SERVER or similar structure
+         *
+         * @return array
          */
         public static function getHeadersFromServer(array $server): array;
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Cache/Base/BaseCache.php
-namespace Tqdev\PhpCrudApi\Cache\Base {
-
-    use Tqdev\PhpCrudApi\Cache\Cache;
-
-    class BaseCache implements Cache
-    {
-        public function __construct()
-        {
-        }
-
-        public function set(string $key, string $value, int $ttl = 0): bool
-        {
-            return true;
-        }
-
-        public function get(string $key): string
-        {
-            return '';
-        }
-
-        public function clear(): bool
-        {
-            return true;
-        }
-        
-        public function ping(): int
-        {
-            $start = microtime(true);
-            $this->get('__ping__');
-            return intval((microtime(true)-$start)*1000000);
-        }
-    }
-}
-
-// file: src/Tqdev/PhpCrudApi/Cache/Cache.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Cache/Cache.php
 namespace Tqdev\PhpCrudApi\Cache {
 
     interface Cache
@@ -3337,11 +3633,10 @@ namespace Tqdev\PhpCrudApi\Cache {
         public function set(string $key, string $value, int $ttl = 0): bool;
         public function get(string $key): string;
         public function clear(): bool;
-        public function ping(): int;
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Cache/CacheFactory.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Cache/CacheFactory.php
 namespace Tqdev\PhpCrudApi\Cache {
 
     class CacheFactory
@@ -3369,12 +3664,10 @@ namespace Tqdev\PhpCrudApi\Cache {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Cache/MemcacheCache.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Cache/MemcacheCache.php
 namespace Tqdev\PhpCrudApi\Cache {
 
-    use Tqdev\PhpCrudApi\Cache\Base\BaseCache;
-
-    class MemcacheCache extends BaseCache implements Cache
+    class MemcacheCache implements Cache
     {
         protected $prefix;
         protected $memcache;
@@ -3417,7 +3710,7 @@ namespace Tqdev\PhpCrudApi\Cache {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Cache/MemcachedCache.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Cache/MemcachedCache.php
 namespace Tqdev\PhpCrudApi\Cache {
 
     class MemcachedCache extends MemcacheCache
@@ -3434,22 +3727,36 @@ namespace Tqdev\PhpCrudApi\Cache {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Cache/NoCache.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Cache/NoCache.php
 namespace Tqdev\PhpCrudApi\Cache {
 
-    use Tqdev\PhpCrudApi\Cache\Base\BaseCache;
-
-    class NoCache extends BaseCache implements Cache
+    class NoCache implements Cache
     {
+        public function __construct()
+        {
+        }
+
+        public function set(string $key, string $value, int $ttl = 0): bool
+        {
+            return true;
+        }
+
+        public function get(string $key): string
+        {
+            return '';
+        }
+
+        public function clear(): bool
+        {
+            return true;
+        }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Cache/RedisCache.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Cache/RedisCache.php
 namespace Tqdev\PhpCrudApi\Cache {
 
-    use Tqdev\PhpCrudApi\Cache\Base\BaseCache;
-
-    class RedisCache extends BaseCache implements Cache
+    class RedisCache implements Cache
     {
         protected $prefix;
         protected $redis;
@@ -3485,12 +3792,10 @@ namespace Tqdev\PhpCrudApi\Cache {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Cache/TempFileCache.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Cache/TempFileCache.php
 namespace Tqdev\PhpCrudApi\Cache {
 
-    use Tqdev\PhpCrudApi\Cache\Base\BaseCache;
-
-    class TempFileCache extends BaseCache implements Cache
+    class TempFileCache implements Cache
     {
         const SUFFIX = 'cache';
 
@@ -3574,9 +3879,6 @@ namespace Tqdev\PhpCrudApi\Cache {
             if ($data === false) {
                 return '';
             }
-            if (strpos($data, '|') === false) {
-                return '';
-            }
             list($ttl, $string) = explode('|', $data, 2);
             if ($ttl > 0 && time() - filemtime($filename) > $ttl) {
                 return '';
@@ -3609,18 +3911,18 @@ namespace Tqdev\PhpCrudApi\Cache {
                     if (strlen($entry) != $len) {
                         continue;
                     }
-                    if (file_exists($filename) && is_file($filename)) {
+                    if (is_file($filename)) {
                         if ($all || $this->getString($filename) == null) {
-                            @unlink($filename);
+                            unlink($filename);
                         }
                     }
                 } else {
                     if (strlen($entry) != $segments[0]) {
                         continue;
                     }
-                    if (file_exists($filename) && is_dir($filename)) {
+                    if (is_dir($filename)) {
                         $this->clean($filename, array_slice($segments, 1), $len - $segments[0], $all);
-                        @rmdir($filename);
+                        rmdir($filename);
                     }
                 }
             }
@@ -3637,7 +3939,7 @@ namespace Tqdev\PhpCrudApi\Cache {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Column/Reflection/ReflectedColumn.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Column/Reflection/ReflectedColumn.php
 namespace Tqdev\PhpCrudApi\Column\Reflection {
 
     use Tqdev\PhpCrudApi\Database\GenericReflection;
@@ -3851,7 +4153,7 @@ namespace Tqdev\PhpCrudApi\Column\Reflection {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Column/Reflection/ReflectedDatabase.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Column/Reflection/ReflectedDatabase.php
 namespace Tqdev\PhpCrudApi\Column\Reflection {
 
     use Tqdev\PhpCrudApi\Database\GenericReflection;
@@ -3923,7 +4225,7 @@ namespace Tqdev\PhpCrudApi\Column\Reflection {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Column/Reflection/ReflectedTable.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Column/Reflection/ReflectedTable.php
 namespace Tqdev\PhpCrudApi\Column\Reflection {
 
     use Tqdev\PhpCrudApi\Database\GenericReflection;
@@ -3973,43 +4275,23 @@ namespace Tqdev\PhpCrudApi\Column\Reflection {
                 $columns[$column->getName()] = $column;
             }
             // set primary key
-            $columnName = false;
-            if ($type == 'view') {
-                $columnName = 'id';
-            } else {
-                $columnNames = $reflection->getTablePrimaryKeys($name);
-                if (count($columnNames) == 1) {
-                    $columnName = $columnNames[0];
+            $columnNames = $reflection->getTablePrimaryKeys($name);
+            if (count($columnNames) == 1) {
+                $columnName = $columnNames[0];
+                if (isset($columns[$columnName])) {
+                    $pk = $columns[$columnName];
+                    $pk->setPk(true);
                 }
-            }
-            if ($columnName && isset($columns[$columnName])) {
-                $pk = $columns[$columnName];
-                $pk->setPk(true);
             }
             // set foreign keys
-            if ($type == 'view') {
-                $tables = $reflection->getTables();
-                foreach ($columns as $columnName => $column) {
-                    if (substr($columnName, -3) == '_id') {
-                        foreach ($tables as $table) {
-                            $tableName = $table['TABLE_NAME'];
-                            $suffix = $tableName . '_id';
-                            if (substr($columnName, -1 * strlen($suffix)) == $suffix) {
-                                $column->setFk($tableName);
-                            }
-                        }
-                    }
-                }
-            } else {
-                $fks = $reflection->getTableForeignKeys($name);
-                foreach ($fks as $columnName => $table) {
-                    $columns[$columnName]->setFk($table);
-                }
+            $fks = $reflection->getTableForeignKeys($name);
+            foreach ($fks as $columnName => $table) {
+                $columns[$columnName]->setFk($table);
             }
             return new ReflectedTable($name, $type, array_values($columns));
         }
 
-        public static function fromJson( /* object */$json): ReflectedTable
+        public static function fromJson(/* object */$json): ReflectedTable
         {
             $name = $json->name;
             $type = isset($json->type) ? $json->type : 'table';
@@ -4061,7 +4343,7 @@ namespace Tqdev\PhpCrudApi\Column\Reflection {
         {
             $columns = array();
             foreach ($this->fks as $columnName => $referencedTableName) {
-                if ($tableName == $referencedTableName && !is_null($this->columns[$columnName])) {
+                if ($tableName == $referencedTableName) {
                     $columns[] = $this->columns[$columnName];
                 }
             }
@@ -4093,7 +4375,7 @@ namespace Tqdev\PhpCrudApi\Column\Reflection {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Column/DefinitionService.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Column/DefinitionService.php
 namespace Tqdev\PhpCrudApi\Column {
 
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedColumn;
@@ -4162,8 +4444,7 @@ namespace Tqdev\PhpCrudApi\Column {
                     return false;
                 }
             }
-            if (
-                $newColumn->getType() != $column->getType() ||
+            if ($newColumn->getType() != $column->getType() ||
                 $newColumn->getLength() != $column->getLength() ||
                 $newColumn->getPrecision() != $column->getPrecision() ||
                 $newColumn->getScale() != $column->getScale()
@@ -4253,7 +4534,7 @@ namespace Tqdev\PhpCrudApi\Column {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Column/ReflectionService.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Column/ReflectionService.php
 namespace Tqdev\PhpCrudApi\Column {
 
     use Tqdev\PhpCrudApi\Cache\Cache;
@@ -4349,6 +4630,11 @@ namespace Tqdev\PhpCrudApi\Column {
             return $this->database()->getTableNames();
         }
 
+        public function getDatabaseName(): string
+        {
+            return $this->database()->getName();
+        }
+
         public function removeTable(string $tableName): bool
         {
             unset($this->tables[$tableName]);
@@ -4357,7 +4643,7 @@ namespace Tqdev\PhpCrudApi\Column {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Controller/CacheController.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Controller/CacheController.php
 namespace Tqdev\PhpCrudApi\Controller {
 
     use Psr\Http\Message\ResponseInterface;
@@ -4384,7 +4670,7 @@ namespace Tqdev\PhpCrudApi\Controller {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Controller/ColumnController.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Controller/ColumnController.php
 namespace Tqdev\PhpCrudApi\Controller {
 
     use Psr\Http\Message\ResponseInterface;
@@ -4547,7 +4833,7 @@ namespace Tqdev\PhpCrudApi\Controller {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Controller/GeoJsonController.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Controller/GeoJsonController.php
 namespace Tqdev\PhpCrudApi\Controller {
 
     use Psr\Http\Message\ResponseInterface;
@@ -4609,77 +4895,32 @@ namespace Tqdev\PhpCrudApi\Controller {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Controller/JsonResponder.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Controller/JsonResponder.php
 namespace Tqdev\PhpCrudApi\Controller {
 
     use Psr\Http\Message\ResponseInterface;
     use Tqdev\PhpCrudApi\Record\Document\ErrorDocument;
     use Tqdev\PhpCrudApi\Record\ErrorCode;
     use Tqdev\PhpCrudApi\ResponseFactory;
-    use Tqdev\PhpCrudApi\ResponseUtils;
 
     class JsonResponder implements Responder
     {
-        private $debug;
-
-        public function __construct(bool $debug)
-        {
-            $this->debug = $debug;
-        }
-
         public function error(int $error, string $argument, $details = null): ResponseInterface
         {
-            $document = new ErrorDocument(new ErrorCode($error), $argument, $details);
-            return ResponseFactory::fromObject($document->getStatus(), $document);
+            $errorCode = new ErrorCode($error);
+            $status = $errorCode->getStatus();
+            $document = new ErrorDocument($errorCode, $argument, $details);
+            return ResponseFactory::fromObject($status, $document);
         }
 
         public function success($result): ResponseInterface
         {
             return ResponseFactory::fromObject(ResponseFactory::OK, $result);
         }
-
-        public function exception($exception): ResponseInterface
-        {
-            $document = ErrorDocument::fromException($exception, $this->debug);
-            $response = ResponseFactory::fromObject($document->getStatus(), $document);
-            if ($this->debug) {
-                $response = ResponseUtils::addExceptionHeaders($response, $exception);
-            }
-            return $response;
-        }
-
-        public function multi($results): ResponseInterface
-        {
-            $documents = array();
-            $errors = array();
-            $success = true;
-            foreach ($results as $i => $result) {
-                if ($result instanceof \Throwable) {
-                    $documents[$i] = null;
-                    $errors[$i] = ErrorDocument::fromException($result, $this->debug);
-                    $success = false;
-                } else {
-                    $documents[$i] = $result;
-                    $errors[$i] = new ErrorDocument(new ErrorCode(0), '', null);
-                }
-            }
-            $status = $success ? ResponseFactory::OK : ResponseFactory::FAILED_DEPENDENCY;
-            $document = $success ? $documents : $errors;
-            $response = ResponseFactory::fromObject($status, $document);
-            foreach ($results as $i => $result) {
-                if ($result instanceof \Throwable) {
-                    if ($this->debug) {
-                        $response = ResponseUtils::addExceptionHeaders($response, $result);
-                    }
-                }
-            }
-            return $response;
-        }
-
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Controller/OpenApiController.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Controller/OpenApiController.php
 namespace Tqdev\PhpCrudApi\Controller {
 
     use Psr\Http\Message\ResponseInterface;
@@ -4701,12 +4942,12 @@ namespace Tqdev\PhpCrudApi\Controller {
 
         public function openapi(ServerRequestInterface $request): ResponseInterface
         {
-            return $this->responder->success($this->openApi->get($request));
+            return $this->responder->success($this->openApi->get());
         }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Controller/RecordController.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Controller/RecordController.php
 namespace Tqdev\PhpCrudApi\Controller {
 
     use Psr\Http\Message\ResponseInterface;
@@ -4749,15 +4990,18 @@ namespace Tqdev\PhpCrudApi\Controller {
             if (!$this->service->hasTable($table)) {
                 return $this->responder->error(ErrorCode::TABLE_NOT_FOUND, $table);
             }
+            if ($this->service->getType($table) != 'table') {
+                return $this->responder->error(ErrorCode::OPERATION_NOT_SUPPORTED, __FUNCTION__);
+            }
             $id = RequestUtils::getPathSegment($request, 3);
             $params = RequestUtils::getParams($request);
             if (strpos($id, ',') !== false) {
                 $ids = explode(',', $id);
-                $argumentLists = array();
+                $result = [];
                 for ($i = 0; $i < count($ids); $i++) {
-                    $argumentLists[] = array($table, $ids[$i], $params);
+                    array_push($result, $this->service->read($table, $ids[$i], $params));
                 }
-                return $this->responder->multi($this->multiCall([$this->service, 'read'], $argumentLists));
+                return $this->responder->success($result);
             } else {
                 $response = $this->service->read($table, $id, $params);
                 if ($response === null) {
@@ -4765,27 +5009,6 @@ namespace Tqdev\PhpCrudApi\Controller {
                 }
                 return $this->responder->success($response);
             }
-        }
-
-        private function multiCall(callable $method, array $argumentLists): array
-        {
-            $result = array();
-            $success = true;
-            $this->service->beginTransaction();
-            foreach ($argumentLists as $arguments) {
-                try {
-                    $result[] = call_user_func_array($method, $arguments);
-                } catch (\Throwable $e) {
-                    $success = false;
-                    $result[] = $e;
-                }
-            }
-            if ($success) {
-                $this->service->commitTransaction();
-            } else {
-                $this->service->rollBackTransaction();
-            }
-            return $result;
         }
 
         public function create(ServerRequestInterface $request): ResponseInterface
@@ -4803,11 +5026,11 @@ namespace Tqdev\PhpCrudApi\Controller {
             }
             $params = RequestUtils::getParams($request);
             if (is_array($record)) {
-                $argumentLists = array();
+                $result = array();
                 foreach ($record as $r) {
-                    $argumentLists[] = array($table, $r, $params);
+                    $result[] = $this->service->create($table, $r, $params);
                 }
-                return $this->responder->multi($this->multiCall([$this->service, 'create'], $argumentLists));
+                return $this->responder->success($result);
             } else {
                 return $this->responder->success($this->service->create($table, $record, $params));
             }
@@ -4833,11 +5056,11 @@ namespace Tqdev\PhpCrudApi\Controller {
                 if (count($ids) != count($record)) {
                     return $this->responder->error(ErrorCode::ARGUMENT_COUNT_MISMATCH, $id);
                 }
-                $argumentLists = array();
+                $result = array();
                 for ($i = 0; $i < count($ids); $i++) {
-                    $argumentLists[] = array($table, $ids[$i], $record[$i], $params);
+                    $result[] = $this->service->update($table, $ids[$i], $record[$i], $params);
                 }
-                return $this->responder->multi($this->multiCall([$this->service, 'update'], $argumentLists));
+                return $this->responder->success($result);
             } else {
                 if (count($ids) != 1) {
                     return $this->responder->error(ErrorCode::ARGUMENT_COUNT_MISMATCH, $id);
@@ -4859,11 +5082,11 @@ namespace Tqdev\PhpCrudApi\Controller {
             $params = RequestUtils::getParams($request);
             $ids = explode(',', $id);
             if (count($ids) > 1) {
-                $argumentLists = array();
+                $result = array();
                 for ($i = 0; $i < count($ids); $i++) {
-                    $argumentLists[] = array($table, $ids[$i], $params);
+                    $result[] = $this->service->delete($table, $ids[$i], $params);
                 }
-                return $this->responder->multi($this->multiCall([$this->service, 'delete'], $argumentLists));
+                return $this->responder->success($result);
             } else {
                 return $this->responder->success($this->service->delete($table, $id, $params));
             }
@@ -4889,11 +5112,11 @@ namespace Tqdev\PhpCrudApi\Controller {
                 if (count($ids) != count($record)) {
                     return $this->responder->error(ErrorCode::ARGUMENT_COUNT_MISMATCH, $id);
                 }
-                $argumentLists = array();
+                $result = array();
                 for ($i = 0; $i < count($ids); $i++) {
-                    $argumentLists[] = array($table, $ids[$i], $record[$i], $params);
+                    $result[] = $this->service->increment($table, $ids[$i], $record[$i], $params);
                 }
-                return $this->responder->multi($this->multiCall([$this->service, 'increment'], $argumentLists));
+                return $this->responder->success($result);
             } else {
                 if (count($ids) != 1) {
                     return $this->responder->error(ErrorCode::ARGUMENT_COUNT_MISMATCH, $id);
@@ -4904,7 +5127,7 @@ namespace Tqdev\PhpCrudApi\Controller {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Controller/Responder.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Controller/Responder.php
 namespace Tqdev\PhpCrudApi\Controller {
 
     use Psr\Http\Message\ResponseInterface;
@@ -4914,50 +5137,10 @@ namespace Tqdev\PhpCrudApi\Controller {
         public function error(int $error, string $argument, $details = null): ResponseInterface;
 
         public function success($result): ResponseInterface;
-
-        public function multi($results): ResponseInterface;
-
-        public function exception($exception): ResponseInterface;
-
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Controller/StatusController.php
-namespace Tqdev\PhpCrudApi\Controller {
-
-    use Psr\Http\Message\ResponseInterface;
-    use Psr\Http\Message\ServerRequestInterface;
-    use Tqdev\PhpCrudApi\Cache\Cache;
-    use Tqdev\PhpCrudApi\Database\GenericDB;
-    use Tqdev\PhpCrudApi\Middleware\Router\Router;
-
-    class StatusController
-    {
-        private $db;
-        private $cache;
-        private $responder;
-
-        public function __construct(Router $router, Responder $responder, Cache $cache, GenericDB $db)
-        {
-            $router->register('GET', '/status/ping', array($this, 'ping'));
-            $this->db = $db;
-            $this->cache = $cache;
-            $this->responder = $responder;
-        }
-
-        public function ping(ServerRequestInterface $request): ResponseInterface
-        {
-            $result = [
-                'db' => $this->db->ping(),
-                'cache' => $this->cache->ping(),
-            ];
-            return $this->responder->success($result);
-        }
-
-    }
-}
-
-// file: src/Tqdev/PhpCrudApi/Database/ColumnConverter.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Database/ColumnConverter.php
 namespace Tqdev\PhpCrudApi\Database {
 
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedColumn;
@@ -5031,7 +5214,7 @@ namespace Tqdev\PhpCrudApi\Database {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Database/ColumnsBuilder.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Database/ColumnsBuilder.php
 namespace Tqdev\PhpCrudApi\Database {
 
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedColumn;
@@ -5054,14 +5237,9 @@ namespace Tqdev\PhpCrudApi\Database {
                 return '';
             }
             switch ($this->driver) {
-                case 'mysql':
-                    return " LIMIT $offset, $limit";
-                case 'pgsql':
-                    return " LIMIT $limit OFFSET $offset";
-                case 'sqlsrv':
-                    return " OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY";
-                case 'sqlite':
-                    return " LIMIT $limit OFFSET $offset";
+                case 'mysql':return " LIMIT $offset, $limit";
+                case 'pgsql':return " LIMIT $limit OFFSET $offset";
+                case 'sqlsrv':return " OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY";
             }
         }
 
@@ -5111,14 +5289,9 @@ namespace Tqdev\PhpCrudApi\Database {
             $valuesSql = '(' . implode(',', $values) . ')';
             $outputColumn = $this->quoteColumnName($table->getPk());
             switch ($this->driver) {
-                case 'mysql':
-                    return "$columnsSql VALUES $valuesSql";
-                case 'pgsql':
-                    return "$columnsSql VALUES $valuesSql RETURNING $outputColumn";
-                case 'sqlsrv':
-                    return "$columnsSql OUTPUT INSERTED.$outputColumn VALUES $valuesSql";
-                case 'sqlite':
-                    return "$columnsSql VALUES $valuesSql";
+                case 'mysql':return "$columnsSql VALUES $valuesSql";
+                case 'pgsql':return "$columnsSql VALUES $valuesSql RETURNING $outputColumn";
+                case 'sqlsrv':return "$columnsSql OUTPUT INSERTED.$outputColumn VALUES $valuesSql";
             }
         }
 
@@ -5151,7 +5324,7 @@ namespace Tqdev\PhpCrudApi\Database {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Database/ConditionsBuilder.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Database/ConditionsBuilder.php
 namespace Tqdev\PhpCrudApi\Database {
 
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedColumn;
@@ -5298,28 +5471,17 @@ namespace Tqdev\PhpCrudApi\Database {
         private function getSpatialFunctionName(string $operator): string
         {
             switch ($operator) {
-                case 'co':
-                    return 'ST_Contains';
-                case 'cr':
-                    return 'ST_Crosses';
-                case 'di':
-                    return 'ST_Disjoint';
-                case 'eq':
-                    return 'ST_Equals';
-                case 'in':
-                    return 'ST_Intersects';
-                case 'ov':
-                    return 'ST_Overlaps';
-                case 'to':
-                    return 'ST_Touches';
-                case 'wi':
-                    return 'ST_Within';
-                case 'ic':
-                    return 'ST_IsClosed';
-                case 'is':
-                    return 'ST_IsSimple';
-                case 'iv':
-                    return 'ST_IsValid';
+                case 'co':return 'ST_Contains';
+                case 'cr':return 'ST_Crosses';
+                case 'di':return 'ST_Disjoint';
+                case 'eq':return 'ST_Equals';
+                case 'in':return 'ST_Intersects';
+                case 'ov':return 'ST_Overlaps';
+                case 'to':return 'ST_Touches';
+                case 'wi':return 'ST_Within';
+                case 'ic':return 'ST_IsClosed';
+                case 'is':return 'ST_IsSimple';
+                case 'iv':return 'ST_IsValid';
             }
         }
 
@@ -5339,9 +5501,6 @@ namespace Tqdev\PhpCrudApi\Database {
                     $functionName = str_replace('ST_', 'ST', $functionName);
                     $argument = $hasArgument ? 'geometry::STGeomFromText(?,0)' : '';
                     return "$column.$functionName($argument)=1";
-                case 'sqlite':
-                    $argument = $hasArgument ? '?' : '0';
-                    return "$functionName($column, $argument)=1";
             }
         }
 
@@ -5369,7 +5528,7 @@ namespace Tqdev\PhpCrudApi\Database {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Database/DataConverter.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Database/DataConverter.php
 namespace Tqdev\PhpCrudApi\Database {
 
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedColumn;
@@ -5386,34 +5545,22 @@ namespace Tqdev\PhpCrudApi\Database {
 
         private function convertRecordValue($conversion, $value)
         {
-            $args = explode('|', $conversion);
-            $type = array_shift($args);
-            switch ($type) {
+            switch ($conversion) {
                 case 'boolean':
                     return $value ? true : false;
                 case 'integer':
                     return (int) $value;
-                case 'float':
-                    return (float) $value;
-                case 'decimal':
-                    return number_format($value, $args[0], '.', '');
             }
             return $value;
         }
 
         private function getRecordValueConversion(ReflectedColumn $column): string
         {
-            if ($column->isBoolean()) {
+            if (in_array($this->driver, ['mysql', 'sqlsrv']) && $column->isBoolean()) {
                 return 'boolean';
             }
-            if (in_array($column->getType(), ['integer', 'bigint'])) {
+            if ($this->driver == 'sqlsrv' && $column->getType() == 'bigint') {
                 return 'integer';
-            }
-            if (in_array($column->getType(), ['float', 'double'])) {
-                return 'float';
-            }
-            if (in_array($this->driver, ['sqlite']) && in_array($column->getType(), ['decimal'])) {
-                return 'decimal|' . $column->getScale();
             }
             return 'none';
         }
@@ -5474,7 +5621,7 @@ namespace Tqdev\PhpCrudApi\Database {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Database/GenericDB.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Database/GenericDB.php
 namespace Tqdev\PhpCrudApi\Database {
 
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedTable;
@@ -5488,7 +5635,6 @@ namespace Tqdev\PhpCrudApi\Database {
         private $address;
         private $port;
         private $database;
-        private $tables;
         private $username;
         private $password;
         private $pdo;
@@ -5507,8 +5653,6 @@ namespace Tqdev\PhpCrudApi\Database {
                     return "$this->driver:host=$this->address port=$this->port dbname=$this->database options='--client_encoding=UTF8'";
                 case 'sqlsrv':
                     return "$this->driver:Server=$this->address,$this->port;Database=$this->database";
-                case 'sqlite':
-                    return "$this->driver:$this->address";
             }
         }
 
@@ -5527,10 +5671,6 @@ namespace Tqdev\PhpCrudApi\Database {
                     ];
                 case 'sqlsrv':
                     return [];
-                case 'sqlite':
-                    return [
-                        'PRAGMA foreign_keys = on;',
-                    ];
             }
         }
 
@@ -5543,17 +5683,20 @@ namespace Tqdev\PhpCrudApi\Database {
             switch ($this->driver) {
                 case 'mysql':
                     return $options + [
+                        \PDO::ATTR_EMULATE_PREPARES => false,
                         \PDO::MYSQL_ATTR_FOUND_ROWS => true,
                         \PDO::ATTR_PERSISTENT => true,
                     ];
                 case 'pgsql':
                     return $options + [
+                        \PDO::ATTR_EMULATE_PREPARES => false,
                         \PDO::ATTR_PERSISTENT => true,
                     ];
                 case 'sqlsrv':
-                    return $options + [];
-                case 'sqlite':
-                    return $options + [];
+                    return $options + [
+                        \PDO::SQLSRV_ATTR_DIRECT_QUERY => false,
+                        \PDO::SQLSRV_ATTR_FETCHES_NUMERIC_TYPE => true,
+                    ];
             }
         }
 
@@ -5569,27 +5712,26 @@ namespace Tqdev\PhpCrudApi\Database {
             foreach ($commands as $command) {
                 $this->pdo->addInitCommand($command);
             }
-            $this->reflection = new GenericReflection($this->pdo, $this->driver, $this->database, $this->tables);
-            $this->definition = new GenericDefinition($this->pdo, $this->driver, $this->database, $this->tables);
+            $this->reflection = new GenericReflection($this->pdo, $this->driver, $this->database);
+            $this->definition = new GenericDefinition($this->pdo, $this->driver, $this->database);
             $this->conditions = new ConditionsBuilder($this->driver);
             $this->columns = new ColumnsBuilder($this->driver);
             $this->converter = new DataConverter($this->driver);
             return $result;
         }
 
-        public function __construct(string $driver, string $address, int $port, string $database, array $tables, string $username, string $password)
+        public function __construct(string $driver, string $address, int $port, string $database, string $username, string $password)
         {
             $this->driver = $driver;
             $this->address = $address;
             $this->port = $port;
             $this->database = $database;
-            $this->tables = $tables;
             $this->username = $username;
             $this->password = $password;
             $this->initPdo();
         }
 
-        public function reconstruct(string $driver, string $address, int $port, string $database, array $tables, string $username, string $password): bool
+        public function reconstruct(string $driver, string $address, int $port, string $database, string $username, string $password): bool
         {
             if ($driver) {
                 $this->driver = $driver;
@@ -5602,9 +5744,6 @@ namespace Tqdev\PhpCrudApi\Database {
             }
             if ($database) {
                 $this->database = $database;
-            }
-            if ($tables) {
-                $this->tables = $tables;
             }
             if ($username) {
                 $this->username = $username;
@@ -5628,21 +5767,6 @@ namespace Tqdev\PhpCrudApi\Database {
         public function definition(): GenericDefinition
         {
             return $this->definition;
-        }
-
-        public function beginTransaction() /*: void*/
-        {
-            $this->pdo->beginTransaction();
-        }
-
-        public function commitTransaction() /*: void*/
-        {
-            $this->pdo->commit();
-        }
-
-        public function rollBackTransaction() /*: void*/
-        {
-            $this->pdo->rollBack();
         }
 
         private function addMiddlewareConditions(string $tableName, Condition $condition): Condition
@@ -5676,15 +5800,9 @@ namespace Tqdev\PhpCrudApi\Database {
                 case 'mysql':
                     $stmt = $this->query('SELECT LAST_INSERT_ID()', []);
                     break;
-                case 'sqlite':
-                    $stmt = $this->query('SELECT LAST_INSERT_ROWID()', []);
-                    break;
             }
             $pkValue = $stmt->fetchColumn(0);
-            if ($table->getPk()->getType() == 'bigint') {
-                return (int) $pkValue;
-            }
-            if (in_array($table->getPk()->getType(), ['integer', 'bigint'])) {
+            if ($this->driver == 'sqlsrv' && $table->getPk()->getType() == 'bigint') {
                 return (int) $pkValue;
             }
             return $pkValue;
@@ -5811,14 +5929,6 @@ namespace Tqdev\PhpCrudApi\Database {
             return $stmt;
         }
 
-        public function ping(): int
-        {
-            $start = microtime(true);
-            $stmt = $this->pdo->prepare('SELECT 1');
-            $stmt->execute();
-            return intval((microtime(true) - $start) * 1000000);
-        }
-
         public function getCacheKey(): string
         {
             return md5(json_encode([
@@ -5826,14 +5936,13 @@ namespace Tqdev\PhpCrudApi\Database {
                 $this->address,
                 $this->port,
                 $this->database,
-                $this->tables,
-                $this->username,
+                $this->username
             ]));
         }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Database/GenericDefinition.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Database/GenericDefinition.php
 namespace Tqdev\PhpCrudApi\Database {
 
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedColumn;
@@ -5848,13 +5957,13 @@ namespace Tqdev\PhpCrudApi\Database {
         private $typeConverter;
         private $reflection;
 
-        public function __construct(LazyPdo $pdo, string $driver, string $database, array $tables)
+        public function __construct(LazyPdo $pdo, string $driver, string $database)
         {
             $this->pdo = $pdo;
             $this->driver = $driver;
             $this->database = $database;
             $this->typeConverter = new TypeConverter($driver);
-            $this->reflection = new GenericReflection($pdo, $driver, $database, $tables);
+            $this->reflection = new GenericReflection($pdo, $driver, $database);
         }
 
         private function quote(string $identifier): string
@@ -5906,9 +6015,7 @@ namespace Tqdev\PhpCrudApi\Database {
                     return $column->getPk() ? ' AUTO_INCREMENT' : '';
                 case 'pgsql':
                 case 'sqlsrv':
-                    return $column->getPk() ? ' IDENTITY(1,1)' : '';
-                case 'sqlite':
-                    return $column->getPk() ? ' AUTOINCREMENT' : '';
+                    return '';
             }
         }
 
@@ -5932,8 +6039,6 @@ namespace Tqdev\PhpCrudApi\Database {
                     return "ALTER TABLE $p1 RENAME TO $p2";
                 case 'sqlsrv':
                     return "EXEC sp_rename $p1, $p2";
-                case 'sqlite':
-                    return "ALTER TABLE $p1 RENAME TO $p2";
             }
         }
 
@@ -5952,8 +6057,6 @@ namespace Tqdev\PhpCrudApi\Database {
                 case 'sqlsrv':
                     $p4 = $this->quote($tableName . '.' . $columnName);
                     return "EXEC sp_rename $p4, $p3, 'COLUMN'";
-                case 'sqlite':
-                    return "ALTER TABLE $p1 RENAME COLUMN $p2 TO $p3";
             }
         }
 
@@ -6112,22 +6215,12 @@ namespace Tqdev\PhpCrudApi\Database {
                 $f4 = $this->quote($newColumn->getFk());
                 $f5 = $this->quote($this->getPrimaryKey($newColumn->getFk()));
                 $f6 = $this->quote($tableName . '_' . $pkColumn . '_pkey');
-                if ($this->driver == 'sqlite') {
-                    if ($newColumn->getPk()) {
-                        $f2 = str_replace('NULL', 'NULL PRIMARY KEY', $f2);
-                    }
-                    $fields[] = "$f1 $f2";
-                    if ($newColumn->getFk()) {
-                        $constraints[] = "FOREIGN KEY ($f1) REFERENCES $f4 ($f5)";
-                    }
-                } else {
-                    $fields[] = "$f1 $f2";
-                    if ($newColumn->getPk()) {
-                        $constraints[] = "CONSTRAINT $f6 PRIMARY KEY ($f1)";
-                    }
-                    if ($newColumn->getFk()) {
-                        $constraints[] = "CONSTRAINT $f3 FOREIGN KEY ($f1) REFERENCES $f4 ($f5)";
-                    }
+                $fields[] = "$f1 $f2";
+                if ($newColumn->getPk()) {
+                    $constraints[] = "CONSTRAINT $f6 PRIMARY KEY ($f1)";
+                }
+                if ($newColumn->getFk()) {
+                    $constraints[] = "CONSTRAINT $f3 FOREIGN KEY ($f1) REFERENCES $f4 ($f5)";
                 }
             }
             $p2 = implode(',', array_merge($fields, $constraints));
@@ -6147,8 +6240,6 @@ namespace Tqdev\PhpCrudApi\Database {
                     return "ALTER TABLE $p1 ADD COLUMN $p2 $p3";
                 case 'sqlsrv':
                     return "ALTER TABLE $p1 ADD $p2 $p3";
-                case 'sqlite':
-                    return "ALTER TABLE $p1 ADD COLUMN $p2 $p3";
             }
         }
 
@@ -6161,8 +6252,6 @@ namespace Tqdev\PhpCrudApi\Database {
                 case 'pgsql':
                     return "DROP TABLE $p1 CASCADE;";
                 case 'sqlsrv':
-                    return "DROP TABLE $p1;";
-                case 'sqlite':
                     return "DROP TABLE $p1;";
             }
         }
@@ -6178,46 +6267,44 @@ namespace Tqdev\PhpCrudApi\Database {
                     return "ALTER TABLE $p1 DROP COLUMN $p2 CASCADE;";
                 case 'sqlsrv':
                     return "ALTER TABLE $p1 DROP COLUMN $p2;";
-                case 'sqlite':
-                    return "ALTER TABLE $p1 DROP COLUMN $p2;";
             }
         }
 
         public function renameTable(string $tableName, string $newTableName)
         {
             $sql = $this->getTableRenameSQL($tableName, $newTableName);
-            return $this->query($sql, []);
+            return $this->query($sql);
         }
 
         public function renameColumn(string $tableName, string $columnName, ReflectedColumn $newColumn)
         {
             $sql = $this->getColumnRenameSQL($tableName, $columnName, $newColumn);
-            return $this->query($sql, []);
+            return $this->query($sql);
         }
 
         public function retypeColumn(string $tableName, string $columnName, ReflectedColumn $newColumn)
         {
             $sql = $this->getColumnRetypeSQL($tableName, $columnName, $newColumn);
-            return $this->query($sql, []);
+            return $this->query($sql);
         }
 
         public function setColumnNullable(string $tableName, string $columnName, ReflectedColumn $newColumn)
         {
             $sql = $this->getSetColumnNullableSQL($tableName, $columnName, $newColumn);
-            return $this->query($sql, []);
+            return $this->query($sql);
         }
 
         public function addColumnPrimaryKey(string $tableName, string $columnName, ReflectedColumn $newColumn)
         {
             $sql = $this->getSetColumnPkConstraintSQL($tableName, $columnName, $newColumn);
-            $this->query($sql, []);
+            $this->query($sql);
             if ($this->canAutoIncrement($newColumn)) {
                 $sql = $this->getSetColumnPkSequenceSQL($tableName, $columnName, $newColumn);
-                $this->query($sql, []);
+                $this->query($sql);
                 $sql = $this->getSetColumnPkSequenceStartSQL($tableName, $columnName, $newColumn);
-                $this->query($sql, []);
+                $this->query($sql);
                 $sql = $this->getSetColumnPkDefaultSQL($tableName, $columnName, $newColumn);
-                $this->query($sql, []);
+                $this->query($sql);
             }
             return true;
         }
@@ -6226,61 +6313,61 @@ namespace Tqdev\PhpCrudApi\Database {
         {
             if ($this->canAutoIncrement($newColumn)) {
                 $sql = $this->getSetColumnPkDefaultSQL($tableName, $columnName, $newColumn);
-                $this->query($sql, []);
+                $this->query($sql);
                 $sql = $this->getSetColumnPkSequenceSQL($tableName, $columnName, $newColumn);
-                $this->query($sql, []);
+                $this->query($sql);
             }
             $sql = $this->getSetColumnPkConstraintSQL($tableName, $columnName, $newColumn);
-            $this->query($sql, []);
+            $this->query($sql);
             return true;
         }
 
         public function addColumnForeignKey(string $tableName, string $columnName, ReflectedColumn $newColumn)
         {
             $sql = $this->getAddColumnFkConstraintSQL($tableName, $columnName, $newColumn);
-            return $this->query($sql, []);
+            return $this->query($sql);
         }
 
         public function removeColumnForeignKey(string $tableName, string $columnName, ReflectedColumn $newColumn)
         {
             $sql = $this->getRemoveColumnFkConstraintSQL($tableName, $columnName, $newColumn);
-            return $this->query($sql, []);
+            return $this->query($sql);
         }
 
         public function addTable(ReflectedTable $newTable)
         {
             $sql = $this->getAddTableSQL($newTable);
-            return $this->query($sql, []);
+            return $this->query($sql);
         }
 
         public function addColumn(string $tableName, ReflectedColumn $newColumn)
         {
             $sql = $this->getAddColumnSQL($tableName, $newColumn);
-            return $this->query($sql, []);
+            return $this->query($sql);
         }
 
         public function removeTable(string $tableName)
         {
             $sql = $this->getRemoveTableSQL($tableName);
-            return $this->query($sql, []);
+            return $this->query($sql);
         }
 
         public function removeColumn(string $tableName, string $columnName)
         {
             $sql = $this->getRemoveColumnSQL($tableName, $columnName);
-            return $this->query($sql, []);
+            return $this->query($sql);
         }
 
-        private function query(string $sql, array $arguments): bool
+        private function query(string $sql): bool
         {
             $stmt = $this->pdo->prepare($sql);
-            // echo "- $sql -- " . json_encode($arguments) . "\n";
-            return $stmt->execute($arguments);
+            //echo "- $sql -- []\n";
+            return $stmt->execute();
         }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Database/GenericReflection.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Database/GenericReflection.php
 namespace Tqdev\PhpCrudApi\Database {
 
     use Tqdev\PhpCrudApi\Database\LazyPdo;
@@ -6290,15 +6377,13 @@ namespace Tqdev\PhpCrudApi\Database {
         private $pdo;
         private $driver;
         private $database;
-        private $tables;
         private $typeConverter;
 
-        public function __construct(LazyPdo $pdo, string $driver, string $database, array $tables)
+        public function __construct(LazyPdo $pdo, string $driver, string $database)
         {
             $this->pdo = $pdo;
             $this->driver = $driver;
             $this->database = $database;
-            $this->tables = $tables;
             $this->typeConverter = new TypeConverter($driver);
         }
 
@@ -6310,8 +6395,6 @@ namespace Tqdev\PhpCrudApi\Database {
                 case 'pgsql':
                     return ['spatial_ref_sys', 'raster_columns', 'raster_overviews', 'geography_columns', 'geometry_columns'];
                 case 'sqlsrv':
-                    return [];
-                case 'sqlite':
                     return [];
             }
         }
@@ -6325,8 +6408,6 @@ namespace Tqdev\PhpCrudApi\Database {
                     return 'SELECT c.relname as "TABLE_NAME", c.relkind as "TABLE_TYPE" FROM pg_catalog.pg_class c LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind IN (\'r\', \'v\') AND n.nspname <> \'pg_catalog\' AND n.nspname <> \'information_schema\' AND n.nspname !~ \'^pg_toast\' AND pg_catalog.pg_table_is_visible(c.oid) AND \'\' <> ? ORDER BY "TABLE_NAME";';
                 case 'sqlsrv':
                     return 'SELECT o.name as "TABLE_NAME", o.xtype as "TABLE_TYPE" FROM sysobjects o WHERE o.xtype IN (\'U\', \'V\') ORDER BY "TABLE_NAME"';
-                case 'sqlite':
-                    return 'SELECT t.name as "TABLE_NAME", t.type as "TABLE_TYPE" FROM sqlite_master t WHERE t.type IN (\'table\', \'view\') AND \'\' <> ? ORDER BY "TABLE_NAME"';
             }
         }
 
@@ -6334,13 +6415,11 @@ namespace Tqdev\PhpCrudApi\Database {
         {
             switch ($this->driver) {
                 case 'mysql':
-                    return 'SELECT "COLUMN_NAME", "IS_NULLABLE", "DATA_TYPE", "CHARACTER_MAXIMUM_LENGTH" as "CHARACTER_MAXIMUM_LENGTH", "NUMERIC_PRECISION", "NUMERIC_SCALE", "COLUMN_TYPE" FROM "INFORMATION_SCHEMA"."COLUMNS" WHERE "TABLE_NAME" = ? AND "TABLE_SCHEMA" = ? ORDER BY "ORDINAL_POSITION"';
+                    return 'SELECT "COLUMN_NAME", "IS_NULLABLE", "DATA_TYPE", "CHARACTER_MAXIMUM_LENGTH" as "CHARACTER_MAXIMUM_LENGTH", "NUMERIC_PRECISION", "NUMERIC_SCALE", "COLUMN_TYPE" FROM "INFORMATION_SCHEMA"."COLUMNS" WHERE "TABLE_NAME" = ? AND "TABLE_SCHEMA" = ?';
                 case 'pgsql':
-                    return 'SELECT a.attname AS "COLUMN_NAME", case when a.attnotnull then \'NO\' else \'YES\' end as "IS_NULLABLE", pg_catalog.format_type(a.atttypid, -1) as "DATA_TYPE", case when a.atttypmod < 0 then NULL else a.atttypmod-4 end as "CHARACTER_MAXIMUM_LENGTH", case when a.atttypid != 1700 then NULL else ((a.atttypmod - 4) >> 16) & 65535 end as "NUMERIC_PRECISION", case when a.atttypid != 1700 then NULL else (a.atttypmod - 4) & 65535 end as "NUMERIC_SCALE", \'\' AS "COLUMN_TYPE" FROM pg_attribute a JOIN pg_class pgc ON pgc.oid = a.attrelid WHERE pgc.relname = ? AND \'\' <> ? AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attnum;';
+                    return 'SELECT a.attname AS "COLUMN_NAME", case when a.attnotnull then \'NO\' else \'YES\' end as "IS_NULLABLE", pg_catalog.format_type(a.atttypid, -1) as "DATA_TYPE", case when a.atttypmod < 0 then NULL else a.atttypmod-4 end as "CHARACTER_MAXIMUM_LENGTH", case when a.atttypid != 1700 then NULL else ((a.atttypmod - 4) >> 16) & 65535 end as "NUMERIC_PRECISION", case when a.atttypid != 1700 then NULL else (a.atttypmod - 4) & 65535 end as "NUMERIC_SCALE", \'\' AS "COLUMN_TYPE" FROM pg_attribute a JOIN pg_class pgc ON pgc.oid = a.attrelid WHERE pgc.relname = ? AND \'\' <> ? AND a.attnum > 0 AND NOT a.attisdropped;';
                 case 'sqlsrv':
-                    return 'SELECT c.name AS "COLUMN_NAME", c.is_nullable AS "IS_NULLABLE", t.Name AS "DATA_TYPE", (c.max_length/2) AS "CHARACTER_MAXIMUM_LENGTH", c.precision AS "NUMERIC_PRECISION", c.scale AS "NUMERIC_SCALE", \'\' AS "COLUMN_TYPE" FROM sys.columns c INNER JOIN sys.types t ON c.user_type_id = t.user_type_id WHERE c.object_id = OBJECT_ID(?) AND \'\' <> ? ORDER BY c.column_id';
-                case 'sqlite':
-                    return 'SELECT "name" AS "COLUMN_NAME", case when "notnull"==1 then \'no\' else \'yes\' end as "IS_NULLABLE", lower("type") AS "DATA_TYPE", 2147483647 AS "CHARACTER_MAXIMUM_LENGTH", 0 AS "NUMERIC_PRECISION", 0 AS "NUMERIC_SCALE", \'\' AS "COLUMN_TYPE" FROM pragma_table_info(?) WHERE \'\' <> ? ORDER BY "cid"';
+                    return 'SELECT c.name AS "COLUMN_NAME", c.is_nullable AS "IS_NULLABLE", t.Name AS "DATA_TYPE", (c.max_length/2) AS "CHARACTER_MAXIMUM_LENGTH", c.precision AS "NUMERIC_PRECISION", c.scale AS "NUMERIC_SCALE", \'\' AS "COLUMN_TYPE" FROM sys.columns c INNER JOIN sys.types t ON c.user_type_id = t.user_type_id WHERE c.object_id = OBJECT_ID(?) AND \'\' <> ?';
             }
         }
 
@@ -6353,8 +6432,6 @@ namespace Tqdev\PhpCrudApi\Database {
                     return 'SELECT a.attname AS "COLUMN_NAME" FROM pg_attribute a JOIN pg_constraint c ON (c.conrelid, c.conkey[1]) = (a.attrelid, a.attnum) JOIN pg_class pgc ON pgc.oid = a.attrelid WHERE pgc.relname = ? AND \'\' <> ? AND c.contype = \'p\'';
                 case 'sqlsrv':
                     return 'SELECT c.NAME as "COLUMN_NAME" FROM sys.key_constraints kc inner join sys.objects t on t.object_id = kc.parent_object_id INNER JOIN sys.index_columns ic ON kc.parent_object_id = ic.object_id and kc.unique_index_id = ic.index_id INNER JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id WHERE kc.type = \'PK\' and t.object_id = OBJECT_ID(?) and \'\' <> ?';
-                case 'sqlite':
-                    return 'SELECT "name" as "COLUMN_NAME" FROM pragma_table_info(?) WHERE "pk"=1 AND \'\' <> ?';
             }
         }
 
@@ -6367,8 +6444,6 @@ namespace Tqdev\PhpCrudApi\Database {
                     return 'SELECT a.attname AS "COLUMN_NAME", c.confrelid::regclass::text AS "REFERENCED_TABLE_NAME" FROM pg_attribute a JOIN pg_constraint c ON (c.conrelid, c.conkey[1]) = (a.attrelid, a.attnum) JOIN pg_class pgc ON pgc.oid = a.attrelid WHERE pgc.relname = ? AND \'\' <> ? AND c.contype  = \'f\'';
                 case 'sqlsrv':
                     return 'SELECT COL_NAME(fc.parent_object_id, fc.parent_column_id) AS "COLUMN_NAME", OBJECT_NAME (f.referenced_object_id) AS "REFERENCED_TABLE_NAME" FROM sys.foreign_keys AS f INNER JOIN sys.foreign_key_columns AS fc ON f.OBJECT_ID = fc.constraint_object_id WHERE f.parent_object_id = OBJECT_ID(?) and \'\' <> ?';
-                case 'sqlite':
-                    return 'SELECT "from" AS "COLUMN_NAME", "table" AS "REFERENCED_TABLE_NAME" FROM pragma_foreign_key_list(?) WHERE \'\' <> ?';
             }
         }
 
@@ -6381,27 +6456,21 @@ namespace Tqdev\PhpCrudApi\Database {
         {
             $sql = $this->getTablesSQL();
             $results = $this->query($sql, [$this->database]);
-            $tables = $this->tables;
-            $results = array_filter($results, function ($v) use ($tables) {
-                return !$tables || in_array($v['TABLE_NAME'], $tables);
-            });
             foreach ($results as &$result) {
-                $map = [];
                 switch ($this->driver) {
                     case 'mysql':
                         $map = ['BASE TABLE' => 'table', 'VIEW' => 'view'];
+                        $result['TABLE_TYPE'] = $map[$result['TABLE_TYPE']];
                         break;
                     case 'pgsql':
                         $map = ['r' => 'table', 'v' => 'view'];
+                        $result['TABLE_TYPE'] = $map[$result['TABLE_TYPE']];
                         break;
                     case 'sqlsrv':
                         $map = ['U' => 'table', 'V' => 'view'];
-                        break;
-                    case 'sqlite':
-                        $map = ['table' => 'table', 'view' => 'view'];
+                        $result['TABLE_TYPE'] = $map[trim($result['TABLE_TYPE'])];
                         break;
                 }
-                $result['TABLE_TYPE'] = $map[trim($result['TABLE_TYPE'])];
             }
             return $results;
         }
@@ -6427,23 +6496,6 @@ namespace Tqdev\PhpCrudApi\Database {
                         if (isset($matches[5])) {
                             $result['NUMERIC_SCALE'] = $matches[5];
                         }
-                    }
-                }
-            }
-            if ($this->driver == 'sqlite') {
-                foreach ($results as &$result) {
-                    // sqlite does not reflect types on view columns
-                    preg_match('|([a-z]+)(\(([0-9]+)(,([0-9]+))?\))?|', $result['DATA_TYPE'], $matches);
-                    if (isset($matches[1])) {
-                        $result['DATA_TYPE'] = $matches[1];
-                    } else {
-                        $result['DATA_TYPE'] = 'text';
-                    }
-                    if (isset($matches[5])) {
-                        $result['NUMERIC_PRECISION'] = $matches[3];
-                        $result['NUMERIC_SCALE'] = $matches[5];
-                    } else if (isset($matches[3])) {
-                        $result['CHARACTER_MAXIMUM_LENGTH'] = $matches[3];
                     }
                 }
             }
@@ -6487,7 +6539,7 @@ namespace Tqdev\PhpCrudApi\Database {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Database/LazyPdo.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Database/LazyPdo.php
 namespace Tqdev\PhpCrudApi\Database {
 
     class LazyPdo extends \PDO
@@ -6605,14 +6657,14 @@ namespace Tqdev\PhpCrudApi\Database {
             return $this->pdo()->lastInsertId($name);
         }
 
-        public function query($query, /* ?int */$fetchMode = null, ...$fetchModeArgs): \PDOStatement
+        public function query(string $statement): \PDOStatement
         {
             return call_user_func_array(array($this->pdo(), 'query'), func_get_args());
         }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Database/TypeConverter.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Database/TypeConverter.php
 namespace Tqdev\PhpCrudApi\Database {
 
     class TypeConverter
@@ -6627,26 +6679,19 @@ namespace Tqdev\PhpCrudApi\Database {
         private $fromJdbc = [
             'mysql' => [
                 'clob' => 'longtext',
-                'boolean' => 'tinyint(1)',
+                'boolean' => 'tinyint',
                 'blob' => 'longblob',
                 'timestamp' => 'datetime',
             ],
             'pgsql' => [
                 'clob' => 'text',
                 'blob' => 'bytea',
-                'float' => 'real',
-                'double' => 'double precision',
-                'varbinary' => 'bytea',
             ],
             'sqlsrv' => [
                 'boolean' => 'bit',
                 'varchar' => 'nvarchar',
                 'clob' => 'ntext',
                 'blob' => 'image',
-                'time' => 'time(0)',
-                'timestamp' => 'datetime2(0)',
-                'double' => 'float',
-                'float' => 'real',
             ],
         ];
 
@@ -6741,20 +6786,6 @@ namespace Tqdev\PhpCrudApi\Database {
                 'uniqueidentifier' => 'char',
                 'xml' => 'clob',
             ],
-            'sqlite' => [
-                'tinytext' => 'clob',
-                'text' => 'clob',
-                'mediumtext' => 'clob',
-                'longtext' => 'clob',
-                'mediumint' => 'integer',
-                'int' => 'integer',
-                'bigint' => 'bigint',
-                'int2' => 'smallint',
-                'int4' => 'integer',
-                'int8' => 'bigint',
-                'double precision' => 'double',
-                'datetime' => 'timestamp'
-            ],
         ];
 
         // source: https://docs.oracle.com/javase/9/docs/api/java/sql/Types.html
@@ -6815,8 +6846,7 @@ namespace Tqdev\PhpCrudApi\Database {
                 $jdbcType = $this->toJdbc['simplified'][$jdbcType];
             }
             if (!isset($this->valid[$jdbcType])) {
-                //throw new \Exception("Unsupported type '$jdbcType' for driver '$this->driver'");
-                $jdbcType = 'clob';
+                throw new \Exception("Unsupported type '$jdbcType' for driver '$this->driver'");
             }
             return $jdbcType;
         }
@@ -6832,7 +6862,7 @@ namespace Tqdev\PhpCrudApi\Database {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/GeoJson/Feature.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/GeoJson/Feature.php
 namespace Tqdev\PhpCrudApi\GeoJson {
 
     class Feature implements \JsonSerializable
@@ -6865,7 +6895,7 @@ namespace Tqdev\PhpCrudApi\GeoJson {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/GeoJson/FeatureCollection.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/GeoJson/FeatureCollection.php
 namespace Tqdev\PhpCrudApi\GeoJson {
 
     class FeatureCollection implements \JsonSerializable
@@ -6892,13 +6922,13 @@ namespace Tqdev\PhpCrudApi\GeoJson {
         public function jsonSerialize()
         {
             return array_filter($this->serialize(), function ($v) {
-                return $v !== -1;
+                return $v !== 0;
             });
         }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/GeoJson/GeoJsonService.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/GeoJson/GeoJsonService.php
 namespace Tqdev\PhpCrudApi\GeoJson {
 
     use Tqdev\PhpCrudApi\Column\ReflectionService;
@@ -7026,7 +7056,7 @@ namespace Tqdev\PhpCrudApi\GeoJson {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/GeoJson/Geometry.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/GeoJson/Geometry.php
 namespace Tqdev\PhpCrudApi\GeoJson {
 
     class Geometry implements \JsonSerializable
@@ -7069,6 +7099,7 @@ namespace Tqdev\PhpCrudApi\GeoJson {
                 $coordinates = preg_replace('|([0-9\-\.]+ )+([0-9\-\.]+)|', '[\1\2]', $coordinates);
             }
             $coordinates = str_replace(['(', ')', ', ', ' '], ['[', ']', ',', ','], $coordinates);
+            $json = $coordinates;
             $coordinates = json_decode($coordinates);
             if (!$coordinates) {
                 throw new \Exception('Could not decode WKT: ' . $wkt);
@@ -7091,7 +7122,7 @@ namespace Tqdev\PhpCrudApi\GeoJson {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/Base/Middleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/Base/Middleware.php
 namespace Tqdev\PhpCrudApi\Middleware\Base {
 
     use Psr\Http\Server\MiddlewareInterface;
@@ -7138,7 +7169,7 @@ namespace Tqdev\PhpCrudApi\Middleware\Base {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/Communication/VariableStore.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/Communication/VariableStore.php
 namespace Tqdev\PhpCrudApi\Middleware\Communication {
 
     class VariableStore
@@ -7160,7 +7191,7 @@ namespace Tqdev\PhpCrudApi\Middleware\Communication {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/Router/Router.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/Router/Router.php
 namespace Tqdev\PhpCrudApi\Middleware\Router {
 
     use Psr\Http\Message\ResponseInterface;
@@ -7178,7 +7209,7 @@ namespace Tqdev\PhpCrudApi\Middleware\Router {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/Router/SimpleRouter.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/Router/SimpleRouter.php
 namespace Tqdev\PhpCrudApi\Middleware\Router {
 
     use Psr\Http\Message\ResponseInterface;
@@ -7189,6 +7220,7 @@ namespace Tqdev\PhpCrudApi\Middleware\Router {
     use Tqdev\PhpCrudApi\Record\ErrorCode;
     use Tqdev\PhpCrudApi\Record\PathTree;
     use Tqdev\PhpCrudApi\RequestUtils;
+    use Tqdev\PhpCrudApi\ResponseUtils;
 
     class SimpleRouter implements Router
     {
@@ -7196,37 +7228,39 @@ namespace Tqdev\PhpCrudApi\Middleware\Router {
         private $responder;
         private $cache;
         private $ttl;
+        private $debug;
         private $registration;
         private $routes;
         private $routeHandlers;
         private $middlewares;
 
-        public function __construct(string $basePath, Responder $responder, Cache $cache, int $ttl)
+        public function __construct(string $basePath, Responder $responder, Cache $cache, int $ttl, bool $debug)
         {
-            $this->basePath = rtrim($basePath, '/');
+            $this->basePath = rtrim($this->detectBasePath($basePath), '/');
             $this->responder = $responder;
             $this->cache = $cache;
             $this->ttl = $ttl;
+            $this->debug = $debug;
             $this->registration = true;
             $this->routes = $this->loadPathTree();
             $this->routeHandlers = [];
             $this->middlewares = array();
         }
 
-        private function detectBasePath(ServerRequestInterface $request): string
+        private function detectBasePath(string $basePath): string
         {
-            $serverParams = $request->getServerParams();
-            if (isset($serverParams['REQUEST_URI'])) {
-                $fullPath = urldecode(explode('?', $serverParams['REQUEST_URI'])[0]);
-                if (isset($serverParams['PATH_INFO'])) {
-                    $path = $serverParams['PATH_INFO'];
+            if ($basePath) {
+                return $basePath;
+            }
+            if (isset($_SERVER['REQUEST_URI'])) {
+                $fullPath = urldecode(explode('?', $_SERVER['REQUEST_URI'])[0]);
+                if (isset($_SERVER['PATH_INFO'])) {
+                    $path = $_SERVER['PATH_INFO'];
                     if (substr($fullPath, -1 * strlen($path)) == $path) {
                         return substr($fullPath, 0, -1 * strlen($path));
                     }
                 }
-                if ('/' . basename(__FILE__) == $fullPath) {
-                    return $fullPath;
-                }
+                return $fullPath;
             }
             return '/';
         }
@@ -7265,14 +7299,10 @@ namespace Tqdev\PhpCrudApi\Middleware\Router {
 
         public function route(ServerRequestInterface $request): ResponseInterface
         {
-            if (!$this->basePath) {
-                $this->basePath = rtrim($this->detectBasePath($request), '/');
-            }
             if ($this->registration) {
                 $data = gzcompress(json_encode($this->routes, JSON_UNESCAPED_UNICODE));
                 $this->cache->set('PathTree', $data, $this->ttl);
             }
-
             return $this->handle($request);
         }
 
@@ -7281,7 +7311,7 @@ namespace Tqdev\PhpCrudApi\Middleware\Router {
             $method = strtoupper($request->getMethod());
             $path = array();
             $segment = $method;
-            for ($i = 1; strlen($segment) > 0; $i++) {
+            for ($i = 1; $segment; $i++) {
                 array_push($path, $segment);
                 $segment = RequestUtils::getPathSegment($request, $i);
             }
@@ -7318,15 +7348,28 @@ namespace Tqdev\PhpCrudApi\Middleware\Router {
             }
             try {
                 $response = call_user_func($this->routeHandlers[$routeNumbers[0]], $request);
-            } catch (\Throwable $exception) {
-                $response = $this->responder->exception($exception);
+            } catch (\PDOException $e) {
+                if (strpos(strtolower($e->getMessage()), 'duplicate') !== false) {
+                    $response = $this->responder->error(ErrorCode::DUPLICATE_KEY_EXCEPTION, '');
+                } elseif (strpos(strtolower($e->getMessage()), 'default value') !== false) {
+                    $response = $this->responder->error(ErrorCode::DATA_INTEGRITY_VIOLATION, '');
+                } elseif (strpos(strtolower($e->getMessage()), 'allow nulls') !== false) {
+                    $response = $this->responder->error(ErrorCode::DATA_INTEGRITY_VIOLATION, '');
+                } elseif (strpos(strtolower($e->getMessage()), 'constraint') !== false) {
+                    $response = $this->responder->error(ErrorCode::DATA_INTEGRITY_VIOLATION, '');
+                } else {
+                    $response = $this->responder->error(ErrorCode::ERROR_NOT_FOUND, '');
+                }
+                if ($this->debug) {
+                    $response = ResponseUtils::addExceptionHeaders($response, $e);
+                }
             }
             return $response;
         }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/AjaxOnlyMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/AjaxOnlyMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
@@ -7355,101 +7398,7 @@ namespace Tqdev\PhpCrudApi\Middleware {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/ApiKeyAuthMiddleware.php
-namespace Tqdev\PhpCrudApi\Middleware {
-
-    use Psr\Http\Message\ResponseInterface;
-    use Psr\Http\Message\ServerRequestInterface;
-    use Psr\Http\Server\RequestHandlerInterface;
-    use Tqdev\PhpCrudApi\Controller\Responder;
-    use Tqdev\PhpCrudApi\Middleware\Base\Middleware;
-    use Tqdev\PhpCrudApi\Record\ErrorCode;
-    use Tqdev\PhpCrudApi\RequestUtils;
-
-    class ApiKeyAuthMiddleware extends Middleware
-    {
-        public function process(ServerRequestInterface $request, RequestHandlerInterface $next): ResponseInterface
-        {
-            $headerName = $this->getProperty('header', 'X-API-Key');
-            $apiKey = RequestUtils::getHeader($request, $headerName);
-            if ($apiKey) {
-                $apiKeys = $this->getArrayProperty('keys', '');
-                if (!in_array($apiKey, $apiKeys)) {
-                    return $this->responder->error(ErrorCode::AUTHENTICATION_FAILED, $apiKey);
-                }
-            } else {
-                $authenticationMode = $this->getProperty('mode', 'required');
-                if ($authenticationMode == 'required') {
-                    return $this->responder->error(ErrorCode::AUTHENTICATION_REQUIRED, '');
-                }
-            }
-            $_SESSION['apiKey'] = $apiKey;
-            return $next->handle($request);
-        }
-    }
-}
-
-// file: src/Tqdev/PhpCrudApi/Middleware/ApiKeyDbAuthMiddleware.php
-namespace Tqdev\PhpCrudApi\Middleware {
-
-    use Psr\Http\Message\ResponseInterface;
-    use Psr\Http\Message\ServerRequestInterface;
-    use Psr\Http\Server\RequestHandlerInterface;
-    use Tqdev\PhpCrudApi\Column\ReflectionService;
-    use Tqdev\PhpCrudApi\Controller\Responder;
-    use Tqdev\PhpCrudApi\Database\GenericDB;
-    use Tqdev\PhpCrudApi\Middleware\Base\Middleware;
-    use Tqdev\PhpCrudApi\Middleware\Router\Router;
-    use Tqdev\PhpCrudApi\Record\Condition\ColumnCondition;
-    use Tqdev\PhpCrudApi\Record\ErrorCode;
-    use Tqdev\PhpCrudApi\Record\OrderingInfo;
-    use Tqdev\PhpCrudApi\RequestUtils;
-
-    class ApiKeyDbAuthMiddleware extends Middleware
-    {
-        private $reflection;
-        private $db;
-        private $ordering;
-
-        public function __construct(Router $router, Responder $responder, array $properties, ReflectionService $reflection, GenericDB $db)
-        {
-            parent::__construct($router, $responder, $properties);
-            $this->reflection = $reflection;
-            $this->db = $db;
-            $this->ordering = new OrderingInfo();
-        }
-
-        public function process(ServerRequestInterface $request, RequestHandlerInterface $next): ResponseInterface
-        {
-            $user = false;
-            $headerName = $this->getProperty('header', 'X-API-Key');
-            $apiKey = RequestUtils::getHeader($request, $headerName);
-            if ($apiKey) {
-                $tableName = $this->getProperty('usersTable', 'users');
-                $table = $this->reflection->getTable($tableName);
-                $apiKeyColumnName = $this->getProperty('apiKeyColumn', 'api_key');
-                $apiKeyColumn = $table->getColumn($apiKeyColumnName);
-                $condition = new ColumnCondition($apiKeyColumn, 'eq', $apiKey);
-                $columnNames = $table->getColumnNames();
-                $columnOrdering = $this->ordering->getDefaultColumnOrdering($table);
-                $users = $this->db->selectAll($table, $columnNames, $condition, $columnOrdering, 0, 1);
-                if (count($users) < 1) {
-                    return $this->responder->error(ErrorCode::AUTHENTICATION_FAILED, $apiKey);
-                }
-                $user = $users[0];
-            } else {
-                $authenticationMode = $this->getProperty('mode', 'required');
-                if ($authenticationMode == 'required') {
-                    return $this->responder->error(ErrorCode::AUTHENTICATION_REQUIRED, '');
-                }
-            }
-            $_SESSION['apiUser'] = $user;
-            return $next->handle($request);
-        }
-    }
-}
-
-// file: src/Tqdev/PhpCrudApi/Middleware/AuthorizationMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/AuthorizationMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
@@ -7460,7 +7409,6 @@ namespace Tqdev\PhpCrudApi\Middleware {
     use Tqdev\PhpCrudApi\Middleware\Base\Middleware;
     use Tqdev\PhpCrudApi\Middleware\Communication\VariableStore;
     use Tqdev\PhpCrudApi\Middleware\Router\Router;
-    use Tqdev\PhpCrudApi\Record\ErrorCode;
     use Tqdev\PhpCrudApi\Record\FilterInfo;
     use Tqdev\PhpCrudApi\RequestUtils;
 
@@ -7522,20 +7470,9 @@ namespace Tqdev\PhpCrudApi\Middleware {
             }
         }
 
-        private function pathHandler(string $path) /*: bool*/
-        {
-            $pathHandler = $this->getProperty('pathHandler', '');
-            return $pathHandler ? call_user_func($pathHandler, $path) : true;
-        }
-
         public function process(ServerRequestInterface $request, RequestHandlerInterface $next): ResponseInterface
         {
             $path = RequestUtils::getPathSegment($request, 1);
-
-            if (!$this->pathHandler($path)) {
-                return $this->responder->error(ErrorCode::ROUTE_NOT_FOUND, $request->getUri()->getPath());
-            }
-
             $operation = RequestUtils::getOperation($request);
             $tableNames = RequestUtils::getTableNames($request, $this->reflection);
             foreach ($tableNames as $tableName) {
@@ -7553,7 +7490,7 @@ namespace Tqdev\PhpCrudApi\Middleware {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/BasicAuthMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/BasicAuthMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
@@ -7617,9 +7554,8 @@ namespace Tqdev\PhpCrudApi\Middleware {
 
         private function getAuthorizationCredentials(ServerRequestInterface $request): string
         {
-            $serverParams = $request->getServerParams();
-            if (isset($serverParams['PHP_AUTH_USER'])) {
-                return $serverParams['PHP_AUTH_USER'] . ':' . $serverParams['PHP_AUTH_PW'];
+            if (isset($_SERVER['PHP_AUTH_USER'])) {
+                return $_SERVER['PHP_AUTH_USER'] . ':' . $_SERVER['PHP_AUTH_PW'];
             }
             $header = RequestUtils::getHeader($request, 'Authorization');
             $parts = explode(' ', trim($header), 2);
@@ -7636,10 +7572,6 @@ namespace Tqdev\PhpCrudApi\Middleware {
         {
             if (session_status() == PHP_SESSION_NONE) {
                 if (!headers_sent()) {
-                    $sessionName = $this->getProperty('sessionName', '');
-                    if ($sessionName) {
-                        session_name($sessionName);
-                    }
                     session_start();
                 }
             }
@@ -7673,7 +7605,7 @@ namespace Tqdev\PhpCrudApi\Middleware {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/CorsMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/CorsMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
@@ -7681,26 +7613,16 @@ namespace Tqdev\PhpCrudApi\Middleware {
     use Psr\Http\Server\RequestHandlerInterface;
     use Tqdev\PhpCrudApi\Controller\Responder;
     use Tqdev\PhpCrudApi\Middleware\Base\Middleware;
-    use Tqdev\PhpCrudApi\Middleware\Router\Router;
     use Tqdev\PhpCrudApi\Record\ErrorCode;
     use Tqdev\PhpCrudApi\ResponseFactory;
-    use Tqdev\PhpCrudApi\ResponseUtils;
 
     class CorsMiddleware extends Middleware
     {
-        private $debug;
-
-        public function __construct(Router $router, Responder $responder, array $properties, bool $debug)
-        {
-            parent::__construct($router, $responder, $properties);
-            $this->debug = $debug;
-        }
-
         private function isOriginAllowed(string $origin, string $allowedOrigins): bool
         {
             $found = false;
             foreach (explode(',', $allowedOrigins) as $allowedOrigin) {
-                $hostname = preg_quote(strtolower(trim($allowedOrigin)),'/');
+                $hostname = preg_quote(strtolower(trim($allowedOrigin)));
                 $regex = '/^' . str_replace('\*', '.*', $hostname) . '$/';
                 if (preg_match($regex, $origin)) {
                     $found = true;
@@ -7720,9 +7642,6 @@ namespace Tqdev\PhpCrudApi\Middleware {
             } elseif ($method == 'OPTIONS') {
                 $response = ResponseFactory::fromStatus(ResponseFactory::OK);
                 $allowHeaders = $this->getProperty('allowHeaders', 'Content-Type, X-XSRF-TOKEN, X-Authorization');
-                if ($this->debug) {
-                    $allowHeaders = implode(', ', array_filter([$allowHeaders, 'X-Exception-Name, X-Exception-Message, X-Exception-File']));
-                }
                 if ($allowHeaders) {
                     $response = $response->withHeader('Access-Control-Allow-Headers', $allowHeaders);
                 }
@@ -7739,22 +7658,11 @@ namespace Tqdev\PhpCrudApi\Middleware {
                     $response = $response->withHeader('Access-Control-Max-Age', $maxAge);
                 }
                 $exposeHeaders = $this->getProperty('exposeHeaders', '');
-                if ($this->debug) {
-                    $exposeHeaders = implode(', ', array_filter([$exposeHeaders, 'X-Exception-Name, X-Exception-Message, X-Exception-File']));
-                }
                 if ($exposeHeaders) {
                     $response = $response->withHeader('Access-Control-Expose-Headers', $exposeHeaders);
                 }
             } else {
-                $response = null;
-                try {
-                    $response = $next->handle($request);
-                } catch (\Throwable $e) {
-                    $response = $this->responder->error(ErrorCode::ERROR_NOT_FOUND, $e->getMessage());
-                    if ($this->debug) {
-                        $response = ResponseUtils::addExceptionHeaders($response, $e);
-                    }
-                }
+                $response = $next->handle($request);
             }
             if ($origin) {
                 $allowCredentials = $this->getProperty('allowCredentials', 'true');
@@ -7768,7 +7676,7 @@ namespace Tqdev\PhpCrudApi\Middleware {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/CustomizationMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/CustomizationMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
@@ -7811,7 +7719,7 @@ namespace Tqdev\PhpCrudApi\Middleware {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/DbAuthMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/DbAuthMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
@@ -7845,28 +7753,21 @@ namespace Tqdev\PhpCrudApi\Middleware {
         {
             if (session_status() == PHP_SESSION_NONE) {
                 if (!headers_sent()) {
-                    $sessionName = $this->getProperty('sessionName', '');
-                    if ($sessionName) {
-                        session_name($sessionName);
-                    }
                     session_start();
                 }
             }
             $path = RequestUtils::getPathSegment($request, 1);
             $method = $request->getMethod();
-            if ($method == 'POST' && in_array($path, ['login', 'register', 'password'])) {
+            if ($method == 'POST' && $path == 'login') {
                 $body = $request->getParsedBody();
                 $username = isset($body->username) ? $body->username : '';
                 $password = isset($body->password) ? $body->password : '';
-                $newPassword = isset($body->newPassword) ? $body->newPassword : '';
                 $tableName = $this->getProperty('usersTable', 'users');
                 $table = $this->reflection->getTable($tableName);
                 $usernameColumnName = $this->getProperty('usernameColumn', 'username');
                 $usernameColumn = $table->getColumn($usernameColumnName);
                 $passwordColumnName = $this->getProperty('passwordColumn', 'password');
-                $passwordLength = $this->getProperty('passwordLength', '12');
-                $pkName = $table->getPk()->getName();
-                $registerUser = $this->getProperty('registerUser', '');
+                $passwordColumn = $table->getColumn($passwordColumnName);
                 $condition = new ColumnCondition($usernameColumn, 'eq', $username);
                 $returnedColumns = $this->getProperty('returnedColumns', '');
                 if (!$returnedColumns) {
@@ -7874,67 +7775,20 @@ namespace Tqdev\PhpCrudApi\Middleware {
                 } else {
                     $columnNames = array_map('trim', explode(',', $returnedColumns));
                     $columnNames[] = $passwordColumnName;
-                    $columnNames = array_values(array_unique($columnNames));
                 }
                 $columnOrdering = $this->ordering->getDefaultColumnOrdering($table);
-                if ($path == 'register') {
-                    if (!$registerUser) {
-                        return $this->responder->error(ErrorCode::AUTHENTICATION_FAILED, $username);
-                    }
-                    if (strlen($password) < $passwordLength) {
-                        return $this->responder->error(ErrorCode::PASSWORD_TOO_SHORT, $passwordLength);
-                    }
-                    $users = $this->db->selectAll($table, $columnNames, $condition, $columnOrdering, 0, 1);
-                    if (!empty($users)) {
-                        return $this->responder->error(ErrorCode::USER_ALREADY_EXIST, $username);
-                    }
-                    $data = json_decode($registerUser, true);
-                    $data = is_array($data) ? $data : [];
-                    $data[$usernameColumnName] = $username;
-                    $data[$passwordColumnName] = password_hash($password, PASSWORD_DEFAULT);
-                    $this->db->createSingle($table, $data);
-                    $users = $this->db->selectAll($table, $columnNames, $condition, $columnOrdering, 0, 1);
-                    foreach ($users as $user) {
+                $users = $this->db->selectAll($table, $columnNames, $condition, $columnOrdering, 0, 1);
+                foreach ($users as $user) {
+                    if (password_verify($password, $user[$passwordColumnName]) == 1) {
+                        if (!headers_sent()) {
+                            session_regenerate_id(true);
+                        }
                         unset($user[$passwordColumnName]);
+                        $_SESSION['user'] = $user;
                         return $this->responder->success($user);
                     }
-                    return $this->responder->error(ErrorCode::AUTHENTICATION_FAILED, $username);
                 }
-                if ($path == 'login') {
-                    $users = $this->db->selectAll($table, $columnNames, $condition, $columnOrdering, 0, 1);
-                    foreach ($users as $user) {
-                        if (password_verify($password, $user[$passwordColumnName]) == 1) {
-                            if (!headers_sent()) {
-                                session_regenerate_id(true);
-                            }
-                            unset($user[$passwordColumnName]);
-                            $_SESSION['user'] = $user;
-                            return $this->responder->success($user);
-                        }
-                    }
-                    return $this->responder->error(ErrorCode::AUTHENTICATION_FAILED, $username);
-                }
-                if ($path == 'password') {
-                    if ($username != ($_SESSION['user'][$usernameColumnName] ?? '')) {
-                        return $this->responder->error(ErrorCode::AUTHENTICATION_FAILED, $username);
-                    }
-                    if (strlen($newPassword) < $passwordLength) {
-                        return $this->responder->error(ErrorCode::PASSWORD_TOO_SHORT, $passwordLength);
-                    }
-                    $users = $this->db->selectAll($table, $columnNames, $condition, $columnOrdering, 0, 1);
-                    foreach ($users as $user) {
-                        if (password_verify($password, $user[$passwordColumnName]) == 1) {
-                            if (!headers_sent()) {
-                                session_regenerate_id(true);
-                            }
-                            $data = [$passwordColumnName => password_hash($newPassword, PASSWORD_DEFAULT)];
-                            $this->db->updateSingle($table, $data, $user[$pkName]);
-                            unset($user[$passwordColumnName]);
-                            return $this->responder->success($user);
-                        }
-                    }
-                    return $this->responder->error(ErrorCode::AUTHENTICATION_FAILED, $username);
-                }
+                return $this->responder->error(ErrorCode::AUTHENTICATION_FAILED, $username);
             }
             if ($method == 'POST' && $path == 'logout') {
                 if (isset($_SESSION['user'])) {
@@ -7944,12 +7798,6 @@ namespace Tqdev\PhpCrudApi\Middleware {
                         session_destroy();
                     }
                     return $this->responder->success($user);
-                }
-                return $this->responder->error(ErrorCode::AUTHENTICATION_REQUIRED, '');
-            }
-            if ($method == 'GET' && $path == 'me') {
-                if (isset($_SESSION['user'])) {
-                    return $this->responder->success($_SESSION['user']);
                 }
                 return $this->responder->error(ErrorCode::AUTHENTICATION_REQUIRED, '');
             }
@@ -7964,7 +7812,7 @@ namespace Tqdev\PhpCrudApi\Middleware {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/FirewallMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/FirewallMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
@@ -8001,21 +7849,16 @@ namespace Tqdev\PhpCrudApi\Middleware {
             return false;
         }
 
-        private function getIpAddress(ServerRequestInterface $request): string
+        public function process(ServerRequestInterface $request, RequestHandlerInterface $next): ResponseInterface
         {
             $reverseProxy = $this->getProperty('reverseProxy', '');
             if ($reverseProxy) {
-                $ipAddress = array_pop($request->getHeader('X-Forwarded-For'));
+                $ipAddress = array_pop(explode(',', $request->getHeader('X-Forwarded-For')));
+            } elseif (isset($_SERVER['REMOTE_ADDR'])) {
+                $ipAddress = $_SERVER['REMOTE_ADDR'];
             } else {
-                $serverParams = $request->getServerParams();
-                $ipAddress = $serverParams['REMOTE_ADDR'] ?? '127.0.0.1';
+                $ipAddress = '127.0.0.1';
             }
-            return $ipAddress;
-        }
-
-        public function process(ServerRequestInterface $request, RequestHandlerInterface $next): ResponseInterface
-        {
-            $ipAddress = $this->getIpAddress($request);
             $allowedIpAddresses = $this->getProperty('allowedIpAddresses', '');
             if (!$this->isIpAllowed($ipAddress, $allowedIpAddresses)) {
                 $response = $this->responder->error(ErrorCode::TEMPORARY_OR_PERMANENTLY_BLOCKED, '');
@@ -8027,14 +7870,14 @@ namespace Tqdev\PhpCrudApi\Middleware {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/IpAddressMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/IpAddressMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
     use Psr\Http\Message\ServerRequestInterface;
     use Psr\Http\Server\RequestHandlerInterface;
-    use Tqdev\PhpCrudApi\Column\ReflectionService;
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedTable;
+    use Tqdev\PhpCrudApi\Column\ReflectionService;
     use Tqdev\PhpCrudApi\Controller\Responder;
     use Tqdev\PhpCrudApi\Middleware\Base\Middleware;
     use Tqdev\PhpCrudApi\Middleware\Router\Router;
@@ -8050,7 +7893,7 @@ namespace Tqdev\PhpCrudApi\Middleware {
             $this->reflection = $reflection;
         }
 
-        private function callHandler(ServerRequestInterface $request, $record, string $operation, ReflectedTable $table) /*: object */
+        private function callHandler($record, string $operation, ReflectedTable $table) /*: object */
         {
             $context = (array) $record;
             $columnNames = $this->getProperty('columns', '');
@@ -8058,7 +7901,7 @@ namespace Tqdev\PhpCrudApi\Middleware {
                 foreach (explode(',', $columnNames) as $columnName) {
                     if ($table->hasColumn($columnName)) {
                         if ($operation == 'create') {
-                            $context[$columnName] = $this->getIpAddress($request);
+                            $context[$columnName] = $_SERVER['REMOTE_ADDR'];
                         } else {
                             unset($context[$columnName]);
                         }
@@ -8066,18 +7909,6 @@ namespace Tqdev\PhpCrudApi\Middleware {
                 }
             }
             return (object) $context;
-        }
-
-        private function getIpAddress(ServerRequestInterface $request): string
-        {
-            $reverseProxy = $this->getProperty('reverseProxy', '');
-            if ($reverseProxy) {
-                $ipAddress = array_pop($request->getHeader('X-Forwarded-For'));
-            } else {
-                $serverParams = $request->getServerParams();
-                $ipAddress = $serverParams['REMOTE_ADDR'] ?? '127.0.0.1';
-            }
-            return $ipAddress;
         }
 
         public function process(ServerRequestInterface $request, RequestHandlerInterface $next): ResponseInterface
@@ -8093,10 +7924,10 @@ namespace Tqdev\PhpCrudApi\Middleware {
                             $table = $this->reflection->getTable($tableName);
                             if (is_array($record)) {
                                 foreach ($record as &$r) {
-                                    $r = $this->callHandler($request, $r, $operation, $table);
+                                    $r = $this->callHandler($r, $operation, $table);
                                 }
                             } else {
-                                $record = $this->callHandler($request, $record, $operation, $table);
+                                $record = $this->callHandler($record, $operation, $table);
                             }
                             $request = $request->withParsedBody($record);
                         }
@@ -8108,7 +7939,7 @@ namespace Tqdev\PhpCrudApi\Middleware {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/JoinLimitsMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/JoinLimitsMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
@@ -8165,108 +7996,7 @@ namespace Tqdev\PhpCrudApi\Middleware {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/JsonMiddleware.php
-namespace Tqdev\PhpCrudApi\Middleware {
-
-    use Psr\Http\Message\ResponseInterface;
-    use Psr\Http\Message\ServerRequestInterface;
-    use Psr\Http\Server\RequestHandlerInterface;
-    use Tqdev\PhpCrudApi\Middleware\Base\Middleware;
-    use Tqdev\PhpCrudApi\RequestUtils;
-    use Tqdev\PhpCrudApi\ResponseFactory;
-
-    class JsonMiddleware extends Middleware
-    {
-        private function convertJsonRequestValue($value) /*: object */
-        {
-            if (is_array($value) || is_object($value)) {
-                $value = json_encode($value,JSON_UNESCAPED_UNICODE);
-            }
-            return $value;
-        }
-        
-        private function convertJsonRequest($object, array $columnNames) /*: object */
-        {
-            if (is_array($object)) {
-                foreach ($object as $i => $obj) {
-                    foreach ($obj as $k => $v) {
-                        if (in_array('all', $columnNames) || in_array($k, $columnNames)) {
-                            $object[$i]->$k = $this->convertJsonRequestValue($v);
-                        }
-                    }
-                }
-            } else if (is_object($object)) {
-                foreach ($object as $k => $v) {
-                    if (in_array('all', $columnNames) || in_array($k, $columnNames)) {
-                        $object->$k = $this->convertJsonRequestValue($v);
-                    }
-                }
-            }
-            return $object;
-        }
-
-        private function convertJsonResponseValue(string $value) /*: object */
-        {
-            if (strlen($value) > 0 && in_array($value[0],['[','{'])) {
-                $parsed = json_decode($value);
-                if (json_last_error() == JSON_ERROR_NONE) {
-                    $value = $parsed;
-                }
-            }
-            return $value;
-        }
-
-        private function convertJsonResponse($object, array $columnNames) /*: object */
-        {
-            if (is_array($object)) {
-                foreach ($object as $k => $v) {
-                    $object[$k] = $this->convertJsonResponse($v, $columnNames);
-                }
-            } else if (is_object($object)) {
-                foreach ($object as $k => $v) {
-                    if (in_array('all', $columnNames) || in_array($k, $columnNames)) {
-                        $object->$k = $this->convertJsonResponse($v, $columnNames);
-                    }
-                }
-            } else if (is_string($object)) {
-                $object = $this->convertJsonResponseValue($object);
-            }
-            return $object;
-        }
-
-        public function process(ServerRequestInterface $request, RequestHandlerInterface $next): ResponseInterface
-        {
-            $operation = RequestUtils::getOperation($request);
-            $controllerPath = RequestUtils::getPathSegment($request, 1);
-            $tableName = RequestUtils::getPathSegment($request, 2);
-
-            $controllerPaths = $this->getArrayProperty('controllers', 'records,geojson');
-    		$tableNames = $this->getArrayProperty('tables', 'all');
-    		$columnNames = $this->getArrayProperty('columns', 'all');
-    		if (
-    			(in_array('all', $controllerPaths) || in_array($controllerPath, $controllerPaths)) &&
-    			(in_array('all', $tableNames) || in_array($tableName, $tableNames))
-    		) {
-                if (in_array($operation, ['create', 'update'])) {
-                    $records = $request->getParsedBody();
-                    $records = $this->convertJsonRequest($records,$columnNames);
-                    $request = $request->withParsedBody($records);
-                }
-                $response = $next->handle($request);
-                if (in_array($operation, ['read', 'list'])) {
-                    $records = json_decode($response->getBody()->getContents());
-                    $records = $this->convertJsonResponse($records, $columnNames);
-                    $response = ResponseFactory::fromObject($response->getStatusCode(), $records);
-                }
-            } else {
-                $response = $next->handle($request);
-            }
-            return $response;
-        }
-    }
-}
-
-// file: src/Tqdev/PhpCrudApi/Middleware/JwtAuthMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/JwtAuthMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
@@ -8336,17 +8066,8 @@ namespace Tqdev\PhpCrudApi\Middleware {
             foreach ($requirements as $field => $values) {
                 if (!empty($values)) {
                     if ($field != 'alg') {
-                        if (!isset($claims[$field])) {
+                        if (!isset($claims[$field]) || !in_array($claims[$field], $values)) {
                             return array();
-                        }
-                        if (is_array($claims[$field])) {
-                            if (!array_intersect($claims[$field], $values)) {
-                                return array();
-                            }
-                        } else {
-                            if (!in_array($claims[$field], $values)) {
-                                return array();
-                            }
                         }
                     }
                 }
@@ -8403,10 +8124,6 @@ namespace Tqdev\PhpCrudApi\Middleware {
         {
             if (session_status() == PHP_SESSION_NONE) {
                 if (!headers_sent()) {
-                    $sessionName = $this->getProperty('sessionName', '');
-                    if ($sessionName) {
-                        session_name($sessionName);
-                    }
                     session_start();
                 }
             }
@@ -8432,7 +8149,7 @@ namespace Tqdev\PhpCrudApi\Middleware {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/MultiTenancyMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/MultiTenancyMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
@@ -8471,7 +8188,7 @@ namespace Tqdev\PhpCrudApi\Middleware {
         private function getPairs($handler, string $operation, string $tableName): array
         {
             $result = array();
-            $pairs = call_user_func($handler, $operation, $tableName) ?: [];
+            $pairs = call_user_func($handler, $operation, $tableName);
             $table = $this->reflection->getTable($tableName);
             foreach ($pairs as $k => $v) {
                 if ($table->hasColumn($k)) {
@@ -8531,7 +8248,7 @@ namespace Tqdev\PhpCrudApi\Middleware {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/PageLimitsMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/PageLimitsMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
@@ -8583,7 +8300,7 @@ namespace Tqdev\PhpCrudApi\Middleware {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/ReconnectMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/ReconnectMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
@@ -8643,15 +8360,6 @@ namespace Tqdev\PhpCrudApi\Middleware {
             return '';
         }
 
-        private function getTables(): array
-        {
-            $tablesHandler = $this->getProperty('tablesHandler', '');
-            if ($tablesHandler) {
-                return call_user_func($tablesHandler);
-            }
-            return [];
-        }
-
         private function getUsername(): string
         {
             $usernameHandler = $this->getProperty('usernameHandler', '');
@@ -8676,25 +8384,23 @@ namespace Tqdev\PhpCrudApi\Middleware {
             $address = $this->getAddress();
             $port = $this->getPort();
             $database = $this->getDatabase();
-            $tables = $this->getTables();
             $username = $this->getUsername();
             $password = $this->getPassword();
-            if ($driver || $address || $port || $database || $tables || $username || $password) {
-                $this->db->reconstruct($driver, $address, $port, $database, $tables, $username, $password);
+            if ($driver || $address || $port || $database || $username || $password) {
+                $this->db->reconstruct($driver, $address, $port, $database, $username, $password);
             }
             return $next->handle($request);
         }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/SanitationMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/SanitationMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
     use Psr\Http\Message\ServerRequestInterface;
     use Psr\Http\Server\RequestHandlerInterface;
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedTable;
-    use Tqdev\PhpCrudApi\Column\Reflection\ReflectedColumn;
     use Tqdev\PhpCrudApi\Column\ReflectionService;
     use Tqdev\PhpCrudApi\Controller\Responder;
     use Tqdev\PhpCrudApi\Middleware\Base\Middleware;
@@ -8719,95 +8425,9 @@ namespace Tqdev\PhpCrudApi\Middleware {
                 if ($table->hasColumn($columnName)) {
                     $column = $table->getColumn($columnName);
                     $value = call_user_func($handler, $operation, $tableName, $column->serialize(), $value);
-                    $value = $this->sanitizeType($table, $column, $value);
                 }
             }
             return (object) $context;
-        }
-
-        private function sanitizeType(ReflectedTable $table, ReflectedColumn $column, $value)
-        {
-            $tables = $this->getArrayProperty('tables', 'all');
-            $types = $this->getArrayProperty('types', 'all');
-            if (
-                (in_array('all', $tables) || in_array($table->getName(), $tables)) &&
-                (in_array('all', $types) || in_array($column->getType(), $types))
-            ) {
-                if (is_null($value)) {
-                    return $value;
-                }
-                if (is_string($value)) {
-                    $newValue = null;
-                    switch ($column->getType()) {
-                        case 'integer':
-                        case 'bigint':
-                            $newValue = filter_var(trim($value), FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
-                            break;
-                        case 'decimal':
-                            $newValue = filter_var(trim($value), FILTER_VALIDATE_FLOAT, FILTER_NULL_ON_FAILURE);
-                            if (is_float($newValue)) {
-                                $newValue = number_format($newValue, $column->getScale(), '.', '');
-                            }
-                            break;
-                        case 'float':
-                        case 'double':
-                            $newValue = filter_var(trim($value), FILTER_VALIDATE_FLOAT, FILTER_NULL_ON_FAILURE);
-                            break;
-                        case 'boolean':
-                            $newValue = filter_var(trim($value), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-                            break;
-                        case 'date':
-                            $time = strtotime(trim($value));
-                            if ($time !== false) {
-                                $newValue = date('Y-m-d', $time);
-                            }
-                            break;
-                        case 'time':
-                            $time = strtotime(trim($value));
-                            if ($time !== false) {
-                                $newValue = date('H:i:s', $time);
-                            }
-                            break;
-                        case 'timestamp':
-                            $time = strtotime(trim($value));
-                            if ($time !== false) {
-                                $newValue = date('Y-m-d H:i:s', $time);
-                            }
-                            break;
-                        case 'blob':
-                        case 'varbinary':
-                            // allow base64url format
-                            $newValue = strtr(trim($value), '-_', '+/');
-                            break;
-                        case 'clob':
-                        case 'varchar':
-                            $newValue = $value;
-                            break;
-                        case 'geometry':
-                            $newValue = trim($value);
-                            break;
-                    }
-                    if (!is_null($newValue)) {
-                        $value = $newValue;
-                    }
-                } else {
-                    switch ($column->getType()) {
-                        case 'integer':
-                        case 'bigint':
-                            if (is_float($value)) {
-                                $value = (int) round($value);
-                            }
-                            break;
-                        case 'decimal':
-                            if (is_float($value) || is_int($value)) {
-                                $value = number_format((float) $value, $column->getScale(), '.', '');
-                            }
-                            break;
-                    }
-                }
-                // post process
-            }
-            return $value;
         }
 
         public function process(ServerRequestInterface $request, RequestHandlerInterface $next): ResponseInterface
@@ -8838,43 +8458,14 @@ namespace Tqdev\PhpCrudApi\Middleware {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/SslRedirectMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/ValidationMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
     use Psr\Http\Message\ServerRequestInterface;
     use Psr\Http\Server\RequestHandlerInterface;
-    use Tqdev\PhpCrudApi\Middleware\Base\Middleware;
-    use Tqdev\PhpCrudApi\ResponseFactory;
-
-    class SslRedirectMiddleware extends Middleware
-    {
-        public function process(ServerRequestInterface $request, RequestHandlerInterface $next): ResponseInterface
-        {
-            $uri = $request->getUri();
-            $scheme = $uri->getScheme();
-            if ($scheme == 'http') {
-                $uri = $request->getUri();
-                $uri = $uri->withScheme('https');
-                $response = ResponseFactory::fromStatus(301);
-                $response = $response->withHeader('Location', $uri->__toString());
-            } else {
-                $response = $next->handle($request);
-            }
-            return $response;
-        }
-    }
-}
-
-// file: src/Tqdev/PhpCrudApi/Middleware/ValidationMiddleware.php
-namespace Tqdev\PhpCrudApi\Middleware {
-
-    use Psr\Http\Message\ResponseInterface;
-    use Psr\Http\Message\ServerRequestInterface;
-    use Psr\Http\Server\RequestHandlerInterface;
-    use Tqdev\PhpCrudApi\Column\ReflectionService;
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedTable;
-    use Tqdev\PhpCrudApi\Column\Reflection\ReflectedColumn;
+    use Tqdev\PhpCrudApi\Column\ReflectionService;
     use Tqdev\PhpCrudApi\Controller\Responder;
     use Tqdev\PhpCrudApi\Middleware\Base\Middleware;
     use Tqdev\PhpCrudApi\Middleware\Router\Router;
@@ -8882,222 +8473,6 @@ namespace Tqdev\PhpCrudApi\Middleware {
     use Tqdev\PhpCrudApi\RequestUtils;
 
     class ValidationMiddleware extends Middleware
-    {
-    	private $reflection;
-
-    	public function __construct(Router $router, Responder $responder, array $properties, ReflectionService $reflection)
-    	{
-    		parent::__construct($router, $responder, $properties);
-    		$this->reflection = $reflection;
-    	}
-
-    	private function callHandler($handler, $record, string $operation, ReflectedTable $table) /*: ResponseInterface?*/
-    	{
-    		$context = (array) $record;
-    		$details = array();
-    		$tableName = $table->getName();
-    		foreach ($context as $columnName => $value) {
-    			if ($table->hasColumn($columnName)) {
-    				$column = $table->getColumn($columnName);
-    				$valid = call_user_func($handler, $operation, $tableName, $column->serialize(), $value, $context);
-    				if ($valid === true || $valid === '') {
-    					$valid = $this->validateType($table, $column, $value);
-    				}
-    				if ($valid !== true && $valid !== '') {
-    					$details[$columnName] = $valid;
-    				}
-    			}
-    		}
-    		if (count($details) > 0) {
-    			return $this->responder->error(ErrorCode::INPUT_VALIDATION_FAILED, $tableName, $details);
-    		}
-    		return null;
-    	}
-
-    	private function validateType(ReflectedTable $table, ReflectedColumn $column, $value)
-    	{
-    		$tables = $this->getArrayProperty('tables', 'all');
-    		$types = $this->getArrayProperty('types', 'all');
-    		if (
-    			(in_array('all', $tables) || in_array($table->getName(), $tables)) &&
-    			(in_array('all', $types) || in_array($column->getType(), $types))
-    		) {
-    			if (is_null($value)) {
-    				return ($column->getNullable() ? true : "cannot be null");
-    			}
-    			if (is_string($value)) {
-    				// check for whitespace
-    				switch ($column->getType()) {
-    					case 'varchar':
-    					case 'clob':
-    						break;
-    					default:
-    						if (strlen(trim($value)) != strlen($value)) {
-    							return 'illegal whitespace';
-    						}
-    						break;
-    				}
-    				// try to parse
-    				switch ($column->getType()) {
-    					case 'integer':
-    					case 'bigint':
-    						if (
-    							filter_var($value, FILTER_SANITIZE_NUMBER_INT) !== $value ||
-    							filter_var($value, FILTER_VALIDATE_INT) === false
-    						) {
-    							return 'invalid integer';
-    						}
-    						break;
-    					case 'decimal':
-    						if (strpos($value, '.') !== false) {
-    							list($whole, $decimals) = explode('.', ltrim($value, '-'), 2);
-    						} else {
-    							list($whole, $decimals) = array(ltrim($value, '-'), '');
-    						}
-    						if (strlen($whole) > 0 && !ctype_digit($whole)) {
-    							return 'invalid decimal';
-    						}
-    						if (strlen($decimals) > 0 && !ctype_digit($decimals)) {
-    							return 'invalid decimal';
-    						}
-    						if (strlen($whole) > $column->getPrecision() - $column->getScale()) {
-    							return 'decimal too large';
-    						}
-    						if (strlen($decimals) > $column->getScale()) {
-    							return 'decimal too precise';
-    						}
-    						break;
-    					case 'float':
-    					case 'double':
-    						if (
-    							filter_var($value, FILTER_SANITIZE_NUMBER_FLOAT) !== $value ||
-    							filter_var($value, FILTER_VALIDATE_FLOAT) === false
-    						) {
-    							return 'invalid float';
-    						}
-    						break;
-    					case 'boolean':
-    						if (!in_array(strtolower($value), array('true', 'false'))) {
-    							return 'invalid boolean';
-    						}
-    						break;
-    					case 'date':
-    						if (date_create_from_format('Y-m-d', $value) === false) {
-    							return 'invalid date';
-    						}
-    						break;
-    					case 'time':
-    						if (date_create_from_format('H:i:s', $value) === false) {
-    							return 'invalid time';
-    						}
-    						break;
-    					case 'timestamp':
-    						if (date_create_from_format('Y-m-d H:i:s', $value) === false) {
-    							return 'invalid timestamp';
-    						}
-    						break;
-    					case 'clob':
-    					case 'varchar':
-    						if ($column->hasLength() && mb_strlen($value, 'UTF-8') > $column->getLength()) {
-    							return 'string too long';
-    						}
-    						break;
-    					case 'blob':
-    					case 'varbinary':
-    						if (base64_decode($value, true) === false) {
-    							return 'invalid base64';
-    						}
-    						if ($column->hasLength() && strlen(base64_decode($value)) > $column->getLength()) {
-    							return 'string too long';
-    						}
-    						break;
-    					case 'geometry':
-    						// no checks yet
-    						break;
-    				}
-    			} else { // check non-string types
-    				switch ($column->getType()) {
-    					case 'integer':
-    					case 'bigint':
-    						if (!is_int($value)) {
-    							return 'invalid integer';
-    						}
-    						break;
-    					case 'float':
-    					case 'double':
-    						if (!is_float($value) && !is_int($value)) {
-    							return 'invalid float';
-    						}
-    						break;
-    					case 'boolean':
-    						if (!is_bool($value) && ($value !== 0) && ($value !== 1)) {
-    							return 'invalid boolean';
-    						}
-    						break;
-    					default:
-    						return 'invalid ' . $column->getType();
-    				}
-    			}
-    			// extra checks
-    			switch ($column->getType()) {
-    				case 'integer': // 4 byte signed
-    					$value = filter_var($value, FILTER_VALIDATE_INT);
-    					if ($value > 2147483647 || $value < -2147483648) {
-    						return 'invalid integer';
-    					}
-    					break;
-    			}
-    		}
-    		return (true);
-    	}
-
-    	public function process(ServerRequestInterface $request, RequestHandlerInterface $next): ResponseInterface
-    	{
-    		$operation = RequestUtils::getOperation($request);
-    		if (in_array($operation, ['create', 'update', 'increment'])) {
-    			$tableName = RequestUtils::getPathSegment($request, 2);
-    			if ($this->reflection->hasTable($tableName)) {
-    				$record = $request->getParsedBody();
-    				if ($record !== null) {
-    					$handler = $this->getProperty('handler', '');
-    					if ($handler !== '') {
-    						$table = $this->reflection->getTable($tableName);
-    						if (is_array($record)) {
-    							foreach ($record as $r) {
-    								$response = $this->callHandler($handler, $r, $operation, $table);
-    								if ($response !== null) {
-    									return $response;
-    								}
-    							}
-    						} else {
-    							$response = $this->callHandler($handler, $record, $operation, $table);
-    							if ($response !== null) {
-    								return $response;
-    							}
-    						}
-    					}
-    				}
-    			}
-    		}
-    		return $next->handle($request);
-    	}
-    }
-}
-
-// file: src/Tqdev/PhpCrudApi/Middleware/XmlMiddleware.php
-namespace Tqdev\PhpCrudApi\Middleware {
-
-    use Psr\Http\Message\ResponseInterface;
-    use Psr\Http\Message\ServerRequestInterface;
-    use Psr\Http\Server\RequestHandlerInterface;
-    use Tqdev\PhpCrudApi\Column\ReflectionService;
-    use Tqdev\PhpCrudApi\Controller\Responder;
-    use Tqdev\PhpCrudApi\Middleware\Base\Middleware;
-    use Tqdev\PhpCrudApi\Middleware\Router\Router;
-    use Tqdev\PhpCrudApi\RequestUtils;
-    use Tqdev\PhpCrudApi\ResponseFactory;
-
-    class XmlMiddleware extends Middleware
     {
         private $reflection;
 
@@ -9107,144 +8482,60 @@ namespace Tqdev\PhpCrudApi\Middleware {
             $this->reflection = $reflection;
         }
 
-        private function json2xml($json, $types = 'null,boolean,number,string,object,array')
+        private function callHandler($handler, $record, string $operation, ReflectedTable $table) /*: ResponseInterface?*/
         {
-            $a = json_decode($json);
-            $d = new \DOMDocument();
-            $c = $d->createElement("root");
-            $d->appendChild($c);
-            $t = function ($v) {
-                $type = gettype($v);
-                switch ($type) {
-                    case 'integer':
-                        return 'number';
-                    case 'double':
-                        return 'number';
-                    default:
-                        return strtolower($type);
-                }
-            };
-            $ts = explode(',', $types);
-            $f = function ($f, $c, $a, $s = false) use ($t, $d, $ts) {
-                if (in_array($t($a), $ts)) {
-                    $c->setAttribute('type', $t($a));
-                }
-                if ($t($a) != 'array' && $t($a) != 'object') {
-                    if ($t($a) == 'boolean') {
-                        $c->appendChild($d->createTextNode($a ? 'true' : 'false'));
-                    } else {
-                        $c->appendChild($d->createTextNode($a));
+            $context = (array) $record;
+            $details = array();
+            $tableName = $table->getName();
+            foreach ($context as $columnName => $value) {
+                if ($table->hasColumn($columnName)) {
+                    $column = $table->getColumn($columnName);
+                    $valid = call_user_func($handler, $operation, $tableName, $column->serialize(), $value, $context);
+                    if ($valid !== true && $valid !== '') {
+                        $details[$columnName] = $valid;
                     }
-                } else {
-                    foreach ($a as $k => $v) {
-                        if ($k == '__type' && $t($a) == 'object') {
-                            $c->setAttribute('__type', $v);
-                        } else {
-                            if ($t($v) == 'object') {
-                                $ch = $c->appendChild($d->createElementNS(null, $s ? 'item' : $k));
-                                $f($f, $ch, $v);
-                            } else if ($t($v) == 'array') {
-                                $ch = $c->appendChild($d->createElementNS(null, $s ? 'item' : $k));
-                                $f($f, $ch, $v, true);
-                            } else {
-                                $va = $d->createElementNS(null, $s ? 'item' : $k);
-                                if ($t($v) == 'boolean') {
-                                    $va->appendChild($d->createTextNode($v ? 'true' : 'false'));
-                                } else {
-                                    $va->appendChild($d->createTextNode($v));
+                }
+            }
+            if (count($details) > 0) {
+                return $this->responder->error(ErrorCode::INPUT_VALIDATION_FAILED, $tableName, $details);
+            }
+            return null;
+        }
+
+        public function process(ServerRequestInterface $request, RequestHandlerInterface $next): ResponseInterface
+        {
+            $operation = RequestUtils::getOperation($request);
+            if (in_array($operation, ['create', 'update', 'increment'])) {
+                $tableName = RequestUtils::getPathSegment($request, 2);
+                if ($this->reflection->hasTable($tableName)) {
+                    $record = $request->getParsedBody();
+                    if ($record !== null) {
+                        $handler = $this->getProperty('handler', '');
+                        if ($handler !== '') {
+                            $table = $this->reflection->getTable($tableName);
+                            if (is_array($record)) {
+                                foreach ($record as $r) {
+                                    $response = $this->callHandler($handler, $r, $operation, $table);
+                                    if ($response !== null) {
+                                        return $response;
+                                    }
                                 }
-                                $ch = $c->appendChild($va);
-                                if (in_array($t($v), $ts)) {
-                                    $ch->setAttribute('type', $t($v));
+                            } else {
+                                $response = $this->callHandler($handler, $record, $operation, $table);
+                                if ($response !== null) {
+                                    return $response;
                                 }
                             }
                         }
                     }
                 }
-            };
-            $f($f, $c, $a, $t($a) == 'array');
-            return $d->saveXML($d->documentElement);
-        }
-
-        private function xml2json($xml)
-        {
-            $o = @simplexml_load_string($xml);
-            if ($o===false) {
-                return null;
             }
-            $a = @dom_import_simplexml($o);
-            if (!$a) {
-                return null;
-            }
-            $t = function ($v) {
-                $t = $v->getAttribute('type');
-                $txt = $v->firstChild->nodeType == XML_TEXT_NODE;
-                return $t ?: ($txt ? 'string' : 'object');
-            };
-            $f = function ($f, $a) use ($t) {
-                $c = null;
-                if ($t($a) == 'null') {
-                    $c = null;
-                } else if ($t($a) == 'boolean') {
-                    $b = substr(strtolower($a->textContent), 0, 1);
-                    $c = in_array($b, array('1', 't'));
-                } else if ($t($a) == 'number') {
-                    $c = $a->textContent + 0;
-                } else if ($t($a) == 'string') {
-                    $c = $a->textContent;
-                } else if ($t($a) == 'object') {
-                    $c = array();
-                    if ($a->getAttribute('__type')) {
-                        $c['__type'] = $a->getAttribute('__type');
-                    }
-                    for ($i = 0; $i < $a->childNodes->length; $i++) {
-                        $v = $a->childNodes[$i];
-                        $c[$v->nodeName] = $f($f, $v);
-                    }
-                    $c = (object) $c;
-                } else if ($t($a) == 'array') {
-                    $c = array();
-                    for ($i = 0; $i < $a->childNodes->length; $i++) {
-                        $v = $a->childNodes[$i];
-                        $c[$i] = $f($f, $v);
-                    }
-                }
-                return $c;
-            };
-            $c = $f($f, $a);
-            return json_encode($c);
-        }
-
-        public function process(ServerRequestInterface $request, RequestHandlerInterface $next): ResponseInterface
-        {
-            parse_str($request->getUri()->getQuery(), $params);
-            $isXml = isset($params['format']) && $params['format'] == 'xml';
-            if ($isXml) {
-                $body = $request->getBody()->getContents();
-                if ($body) {
-                    $json = $this->xml2json($body);
-                    $request = $request->withParsedBody(json_decode($json));
-                }
-            }
-            $response = $next->handle($request);
-            if ($isXml) {
-                $body = $response->getBody()->getContents();
-                if ($body) {
-                    $types = implode(',', $this->getArrayProperty('types', 'null,array'));
-                    if ($types == '' || $types == 'all') {
-                        $xml = $this->json2xml($body);
-                    } else {
-                        $xml = $this->json2xml($body, $types);
-                    }
-                    $response = ResponseFactory::fromXml(ResponseFactory::OK, $xml);
-                }
-            }
-            return $response;
+            return $next->handle($request);
         }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Middleware/XsrfMiddleware.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Middleware/XsrfMiddleware.php
 namespace Tqdev\PhpCrudApi\Middleware {
 
     use Psr\Http\Message\ResponseInterface;
@@ -9256,17 +8547,16 @@ namespace Tqdev\PhpCrudApi\Middleware {
 
     class XsrfMiddleware extends Middleware
     {
-        private function getToken(ServerRequestInterface $request): string
+        private function getToken(): string
         {
             $cookieName = $this->getProperty('cookieName', 'XSRF-TOKEN');
-            $cookieParams = $request->getCookieParams();
-            if (isset($cookieParams[$cookieName])) {
-                $token = $cookieParams[$cookieName];
+            if (isset($_COOKIE[$cookieName])) {
+                $token = $_COOKIE[$cookieName];
             } else {
-                $secure = $request->getUri()->getScheme() == 'https';
+                $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on';
                 $token = bin2hex(random_bytes(8));
                 if (!headers_sent()) {
-                    setcookie($cookieName, $token, 0, '/', '', $secure);
+                    setcookie($cookieName, $token, 0, '', '', $secure);
                 }
             }
             return $token;
@@ -9274,12 +8564,12 @@ namespace Tqdev\PhpCrudApi\Middleware {
 
         public function process(ServerRequestInterface $request, RequestHandlerInterface $next): ResponseInterface
         {
-            $token = $this->getToken($request);
+            $token = $this->getToken();
             $method = $request->getMethod();
             $excludeMethods = $this->getArrayProperty('excludeMethods', 'OPTIONS,GET');
             if (!in_array($method, $excludeMethods)) {
                 $headerName = $this->getProperty('headerName', 'X-XSRF-TOKEN');
-                if ($token != $request->getHeader($headerName)[0]) {
+                if ($token != $request->getHeader($headerName)) {
                     return $this->responder->error(ErrorCode::BAD_OR_MISSING_XSRF_TOKEN, '');
                 }
             }
@@ -9288,10 +8578,9 @@ namespace Tqdev\PhpCrudApi\Middleware {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/OpenApi/OpenApiBuilder.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/OpenApi/OpenApiBuilder.php
 namespace Tqdev\PhpCrudApi\OpenApi {
 
-    use Psr\Http\Message\ServerRequestInterface;
     use Tqdev\PhpCrudApi\Column\ReflectionService;
     use Tqdev\PhpCrudApi\OpenApi\OpenApiDefinition;
 
@@ -9307,35 +8596,33 @@ namespace Tqdev\PhpCrudApi\OpenApi {
             $this->openapi = new OpenApiDefinition($base);
             $this->records = in_array('records', $controllers) ? new OpenApiRecordsBuilder($this->openapi, $reflection) : null;
             $this->columns = in_array('columns', $controllers) ? new OpenApiColumnsBuilder($this->openapi) : null;
-            $this->status = in_array('status', $controllers) ? new OpenApiStatusBuilder($this->openapi) : null;
             $this->builders = array();
             foreach ($builders as $className) {
                 $this->builders[] = new $className($this->openapi, $reflection);
             }
         }
 
-        private function getServerUrl(ServerRequestInterface $request): string
+        private function getServerUrl(): string
         {
-            $uri = $request->getUri();
-            $path = $uri->getPath();
-            $uri = $uri->withPath(trim(substr($path, 0, strpos($path, '/openapi')), '/'));
-            return $uri->__toString();
+            $protocol = @$_SERVER['HTTP_X_FORWARDED_PROTO'] ?: @$_SERVER['REQUEST_SCHEME'] ?: ((isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on") ? "https" : "http");
+            $port = @intval($_SERVER['HTTP_X_FORWARDED_PORT']) ?: @intval($_SERVER["SERVER_PORT"]) ?: (($protocol === 'https') ? 443 : 80);
+            $host = @explode(":", $_SERVER['HTTP_HOST'])[0] ?: @$_SERVER['SERVER_NAME'] ?: @$_SERVER['SERVER_ADDR'];
+            $port = ($protocol === 'https' && $port === 443) || ($protocol === 'http' && $port === 80) ? '' : ':' . $port;
+            $path = @trim(substr($_SERVER['REQUEST_URI'], 0, strpos($_SERVER['REQUEST_URI'], '/openapi')), '/');
+            return sprintf('%s://%s%s/%s', $protocol, $host, $port, $path);
         }
 
-        public function build(ServerRequestInterface $request): OpenApiDefinition
+        public function build(): OpenApiDefinition
         {
             $this->openapi->set("openapi", "3.0.0");
-            if (!$this->openapi->has("servers")) {
-                $this->openapi->set("servers|0|url", $this->getServerUrl($request));
+            if (!$this->openapi->has("servers") && isset($_SERVER['REQUEST_URI'])) {
+                $this->openapi->set("servers|0|url", $this->getServerUrl());
             }
             if ($this->records) {
                 $this->records->build();
             }
             if ($this->columns) {
                 $this->columns->build();
-            }
-            if ($this->status) {
-                $this->status->build();
             }
             foreach ($this->builders as $builder) {
                 $builder->build();
@@ -9345,7 +8632,7 @@ namespace Tqdev\PhpCrudApi\OpenApi {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/OpenApi/OpenApiColumnsBuilder.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/OpenApi/OpenApiColumnsBuilder.php
 namespace Tqdev\PhpCrudApi\OpenApi {
 
     use Tqdev\PhpCrudApi\OpenApi\OpenApiDefinition;
@@ -9368,7 +8655,7 @@ namespace Tqdev\PhpCrudApi\OpenApi {
                 'read' => 'get',
                 'update' => 'put',
                 'delete' => 'delete',
-            ],
+            ]
         ];
 
         public function __construct(OpenApiDefinition $openapi)
@@ -9379,8 +8666,8 @@ namespace Tqdev\PhpCrudApi\OpenApi {
         public function build() /*: void*/
         {
             $this->setPaths();
-            $this->openapi->set("components|responses|bool-success|description", "boolean indicating success or failure");
-            $this->openapi->set("components|responses|bool-success|content|application/json|schema|type", "boolean");
+            $this->openapi->set("components|responses|boolSuccess|description", "boolean indicating success or failure");
+            $this->openapi->set("components|responses|boolSuccess|content|application/json|schema|type", "boolean");
             $this->setComponentSchema();
             $this->setComponentResponse();
             $this->setComponentRequestBody();
@@ -9415,24 +8702,24 @@ namespace Tqdev\PhpCrudApi\OpenApi {
                     foreach ($parameters as $p => $parameter) {
                         $this->openapi->set("paths|$path|$method|parameters|$p|\$ref", "#/components/parameters/$parameter");
                     }
+                    $operationType = $operation . ucfirst($type);
                     if (in_array($operation, ['create', 'update'])) {
-                        $this->openapi->set("paths|$path|$method|requestBody|\$ref", "#/components/requestBodies/$operation-$type");
+                        $this->openapi->set("paths|$path|$method|requestBody|\$ref", "#/components/requestBodies/$operationType");
                     }
                     $this->openapi->set("paths|$path|$method|tags|0", "$type");
-                    $this->openapi->set("paths|$path|$method|operationId", "$operation" . "_" . "$type");
-                    if ("$operation-$type" == 'update-table') {
+                    if ($operationType == 'updateTable') {
                         $this->openapi->set("paths|$path|$method|description", "rename table");
                     } else {
                         $this->openapi->set("paths|$path|$method|description", "$operation $type");
                     }
                     switch ($operation) {
                         case 'read':
-                            $this->openapi->set("paths|$path|$method|responses|200|\$ref", "#/components/responses/$operation-$type");
+                            $this->openapi->set("paths|$path|$method|responses|200|\$ref", "#/components/responses/$operationType");
                             break;
                         case 'create':
                         case 'update':
                         case 'delete':
-                            $this->openapi->set("paths|$path|$method|responses|200|\$ref", "#/components/responses/bool-success");
+                            $this->openapi->set("paths|$path|$method|responses|200|\$ref", "#/components/responses/boolSuccess");
                             break;
                     }
                 }
@@ -9446,12 +8733,13 @@ namespace Tqdev\PhpCrudApi\OpenApi {
                     if ($operation == 'delete') {
                         continue;
                     }
-                    $prefix = "components|schemas|$operation-$type";
+                    $operationType = $operation . ucfirst($type);
+                    $prefix = "components|schemas|$operationType";
                     $this->openapi->set("$prefix|type", "object");
                     switch ($type) {
                         case 'database':
                             $this->openapi->set("$prefix|properties|tables|type", 'array');
-                            $this->openapi->set("$prefix|properties|tables|items|\$ref", "#/components/schemas/read-table");
+                            $this->openapi->set("$prefix|properties|tables|items|\$ref", "#/components/schemas/readTable");
                             break;
                         case 'table':
                             if ($operation == 'update') {
@@ -9463,7 +8751,7 @@ namespace Tqdev\PhpCrudApi\OpenApi {
                                     $this->openapi->set("$prefix|properties|type|type", 'string');
                                 }
                                 $this->openapi->set("$prefix|properties|columns|type", 'array');
-                                $this->openapi->set("$prefix|properties|columns|items|\$ref", "#/components/schemas/read-column");
+                                $this->openapi->set("$prefix|properties|columns|items|\$ref", "#/components/schemas/readColumn");
                             }
                             break;
                         case 'column':
@@ -9492,8 +8780,9 @@ namespace Tqdev\PhpCrudApi\OpenApi {
                     if ($operation != 'read') {
                         continue;
                     }
-                    $this->openapi->set("components|responses|$operation-$type|description", "single $type record");
-                    $this->openapi->set("components|responses|$operation-$type|content|application/json|schema|\$ref", "#/components/schemas/$operation-$type");
+                    $operationType = $operation . ucfirst($type);
+                    $this->openapi->set("components|responses|$operationType|description", "single $type record");
+                    $this->openapi->set("components|responses|$operationType|content|application/json|schema|\$ref", "#/components/schemas/$operationType");
                 }
             }
         }
@@ -9505,8 +8794,9 @@ namespace Tqdev\PhpCrudApi\OpenApi {
                     if (!in_array($operation, ['create', 'update'])) {
                         continue;
                     }
-                    $this->openapi->set("components|requestBodies|$operation-$type|description", "single $type record");
-                    $this->openapi->set("components|requestBodies|$operation-$type|content|application/json|schema|\$ref", "#/components/schemas/$operation-$type");
+                    $operationType = $operation . ucfirst($type);
+                    $this->openapi->set("components|requestBodies|$operationType|description", "single $type record");
+                    $this->openapi->set("components|requestBodies|$operationType|content|application/json|schema|\$ref", "#/components/schemas/$operationType");
                 }
             }
         }
@@ -9534,7 +8824,7 @@ namespace Tqdev\PhpCrudApi\OpenApi {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/OpenApi/OpenApiDefinition.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/OpenApi/OpenApiDefinition.php
 namespace Tqdev\PhpCrudApi\OpenApi {
 
     class OpenApiDefinition implements \JsonSerializable
@@ -9581,11 +8871,10 @@ namespace Tqdev\PhpCrudApi\OpenApi {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/OpenApi/OpenApiRecordsBuilder.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/OpenApi/OpenApiRecordsBuilder.php
 namespace Tqdev\PhpCrudApi\OpenApi {
 
     use Tqdev\PhpCrudApi\Column\ReflectionService;
-    use Tqdev\PhpCrudApi\Column\Reflection\ReflectedColumn;
     use Tqdev\PhpCrudApi\Middleware\Communication\VariableStore;
     use Tqdev\PhpCrudApi\OpenApi\OpenApiDefinition;
 
@@ -9605,23 +8894,18 @@ namespace Tqdev\PhpCrudApi\OpenApi {
             'integer' => ['type' => 'integer', 'format' => 'int32'],
             'bigint' => ['type' => 'integer', 'format' => 'int64'],
             'varchar' => ['type' => 'string'],
-            'clob' => ['type' => 'string', 'format' => 'large-string'], //custom format
+            'clob' => ['type' => 'string'],
             'varbinary' => ['type' => 'string', 'format' => 'byte'],
-            'blob' => ['type' => 'string', 'format' => 'large-byte'], //custom format
-            'decimal' => ['type' => 'string', 'format' => 'decimal'], //custom format
+            'blob' => ['type' => 'string', 'format' => 'byte'],
+            'decimal' => ['type' => 'string'],
             'float' => ['type' => 'number', 'format' => 'float'],
             'double' => ['type' => 'number', 'format' => 'double'],
             'date' => ['type' => 'string', 'format' => 'date'],
-            'time' => ['type' => 'string', 'format' => 'time'], //custom format
+            'time' => ['type' => 'string', 'format' => 'date-time'],
             'timestamp' => ['type' => 'string', 'format' => 'date-time'],
-            'geometry' => ['type' => 'string', 'format' => 'geometry'], //custom format
+            'geometry' => ['type' => 'string'],
             'boolean' => ['type' => 'boolean'],
         ];
-
-        private function normalize(string $value): string
-        {
-            return iconv('UTF-8', 'ASCII//TRANSLIT', $value);
-        }
 
         public function __construct(OpenApiDefinition $openapi, ReflectionService $reflection)
         {
@@ -9696,7 +8980,6 @@ namespace Tqdev\PhpCrudApi\OpenApi {
 
         private function setPath(string $tableName) /*: void*/
         {
-            $normalizedTableName = $this->normalize($tableName);
             $table = $this->reflection->getTable($tableName);
             $type = $table->getType();
             $pk = $table->getPk();
@@ -9718,7 +9001,7 @@ namespace Tqdev\PhpCrudApi\OpenApi {
                         $parameters = ['filter', 'include', 'exclude', 'order', 'size', 'page', 'join'];
                     }
                 } else {
-                    $path = sprintf('/records/%s/{id}', $tableName);
+                    $path = sprintf('/records/%s/{%s}', $tableName, $pkName);
                     if ($operation == 'read') {
                         $parameters = ['pk', 'include', 'exclude', 'join'];
                     } else {
@@ -9729,14 +9012,13 @@ namespace Tqdev\PhpCrudApi\OpenApi {
                     $this->openapi->set("paths|$path|$method|parameters|$p|\$ref", "#/components/parameters/$parameter");
                 }
                 if (in_array($operation, ['create', 'update', 'increment'])) {
-                    $this->openapi->set("paths|$path|$method|requestBody|\$ref", "#/components/requestBodies/$operation-$normalizedTableName");
+                    $this->openapi->set("paths|$path|$method|requestBody|\$ref", "#/components/requestBodies/$operation-" . rawurlencode($tableName));
                 }
                 $this->openapi->set("paths|$path|$method|tags|0", "$tableName");
-                $this->openapi->set("paths|$path|$method|operationId", "$operation" . "_" . "$normalizedTableName");
                 $this->openapi->set("paths|$path|$method|description", "$operation $tableName");
                 switch ($operation) {
                     case 'list':
-                        $this->openapi->set("paths|$path|$method|responses|200|\$ref", "#/components/responses/$operation-$normalizedTableName");
+                        $this->openapi->set("paths|$path|$method|responses|200|\$ref", "#/components/responses/$operation-" . rawurlencode($tableName));
                         break;
                     case 'create':
                         if ($pk->getType() == 'integer') {
@@ -9746,7 +9028,7 @@ namespace Tqdev\PhpCrudApi\OpenApi {
                         }
                         break;
                     case 'read':
-                        $this->openapi->set("paths|$path|$method|responses|200|\$ref", "#/components/responses/$operation-$normalizedTableName");
+                        $this->openapi->set("paths|$path|$method|responses|200|\$ref", "#/components/responses/$operation-" . rawurlencode($tableName));
                         break;
                     case 'update':
                     case 'delete':
@@ -9757,52 +9039,8 @@ namespace Tqdev\PhpCrudApi\OpenApi {
             }
         }
 
-        private function getPattern(ReflectedColumn $column): string
-        {
-            switch ($column->getType()) {
-                case 'integer':
-                    $n = strlen(pow(2, 31));
-                    return '^-?[0-9]{1,' . $n . '}$';
-                case 'bigint':
-                    $n = strlen(pow(2, 63));
-                    return '^-?[0-9]{1,' . $n . '}$';
-                case 'varchar':
-                    $l = $column->getLength();
-                    return '^.{0,' . $l . '}$';
-                case 'clob':
-                    return '^.*$';
-                case 'varbinary':
-                    $l = $column->getLength();
-                    $b = (int) 4 * ceil($l / 3);
-                    return '^[A-Za-z0-9+/]{0,' . $b . '}=*$';
-                case 'blob':
-                    return '^[A-Za-z0-9+/]*=*$';
-                case 'decimal':
-                    $p = $column->getPrecision();
-                    $s = $column->getScale();
-                    return '^-?[0-9]{1,' . ($p - $s) . '}(\.[0-9]{1,' . $s . '})?$';
-                case 'float':
-                    return '^-?[0-9]+(\.[0-9]+)?([eE]-?[0-9]+)?$';
-                case 'double':
-                    return '^-?[0-9]+(\.[0-9]+)?([eE]-?[0-9]+)?$';
-                case 'date':
-                    return '^[0-9]{4}-[0-9]{2}-[0-9]{2}$';
-                case 'time':
-                    return '^[0-9]{2}:[0-9]{2}:[0-9]{2}$';
-                case 'timestamp':
-                    return '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$';
-                    return '';
-                case 'geometry':
-                    return '^(POINT|LINESTRING|POLYGON|MULTIPOINT|MULTILINESTRING|MULTIPOLYGON)\s*\(.*$';
-                case 'boolean':
-                    return '^(true|false)$';
-            }
-            return '';
-        }
-
         private function setComponentSchema(string $tableName, array $references) /*: void*/
         {
-            $normalizedTableName = $this->normalize($tableName);
             $table = $this->reflection->getTable($tableName);
             $type = $table->getType();
             $pk = $table->getPk();
@@ -9811,10 +9049,7 @@ namespace Tqdev\PhpCrudApi\OpenApi {
                 if (!$pkName && $operation != 'list') {
                     continue;
                 }
-                if ($type == 'view' && !in_array($operation, array('read', 'list'))) {
-                    continue;
-                }
-                if ($type == 'view' && !$pkName && $operation == 'read') {
+                if ($type != 'table' && $operation != 'list') {
                     continue;
                 }
                 if ($operation == 'delete') {
@@ -9824,13 +9059,13 @@ namespace Tqdev\PhpCrudApi\OpenApi {
                     continue;
                 }
                 if ($operation == 'list') {
-                    $this->openapi->set("components|schemas|$operation-$normalizedTableName|type", "object");
-                    $this->openapi->set("components|schemas|$operation-$normalizedTableName|properties|results|type", "integer");
-                    $this->openapi->set("components|schemas|$operation-$normalizedTableName|properties|results|format", "int64");
-                    $this->openapi->set("components|schemas|$operation-$normalizedTableName|properties|records|type", "array");
-                    $prefix = "components|schemas|$operation-$normalizedTableName|properties|records|items";
+                    $this->openapi->set("components|schemas|$operation-$tableName|type", "object");
+                    $this->openapi->set("components|schemas|$operation-$tableName|properties|results|type", "integer");
+                    $this->openapi->set("components|schemas|$operation-$tableName|properties|results|format", "int64");
+                    $this->openapi->set("components|schemas|$operation-$tableName|properties|records|type", "array");
+                    $prefix = "components|schemas|$operation-$tableName|properties|records|items";
                 } else {
-                    $prefix = "components|schemas|$operation-$normalizedTableName";
+                    $prefix = "components|schemas|$operation-$tableName";
                 }
                 $this->openapi->set("$prefix|type", "object");
                 foreach ($table->getColumnNames() as $columnName) {
@@ -9839,13 +9074,8 @@ namespace Tqdev\PhpCrudApi\OpenApi {
                     }
                     $column = $table->getColumn($columnName);
                     $properties = $this->types[$column->getType()];
-                    $properties['maxLength'] = $column->hasLength() ? $column->getLength() : 0;
-                    $properties['nullable'] = $column->getNullable();
-                    $properties['pattern'] = $this->getPattern($column);
                     foreach ($properties as $key => $value) {
-                        if ($value) {
-                            $this->openapi->set("$prefix|properties|$columnName|$key", $value);
-                        }
+                        $this->openapi->set("$prefix|properties|$columnName|$key", $value);
                     }
                     if ($column->getPk()) {
                         $this->openapi->set("$prefix|properties|$columnName|x-primary-key", true);
@@ -9861,7 +9091,6 @@ namespace Tqdev\PhpCrudApi\OpenApi {
 
         private function setComponentResponse(string $tableName) /*: void*/
         {
-            $normalizedTableName = $this->normalize($tableName);
             $table = $this->reflection->getTable($tableName);
             $type = $table->getType();
             $pk = $table->getPk();
@@ -9877,17 +9106,16 @@ namespace Tqdev\PhpCrudApi\OpenApi {
                     continue;
                 }
                 if ($operation == 'list') {
-                    $this->openapi->set("components|responses|$operation-$normalizedTableName|description", "list of $tableName records");
+                    $this->openapi->set("components|responses|$operation-$tableName|description", "list of $tableName records");
                 } else {
-                    $this->openapi->set("components|responses|$operation-$normalizedTableName|description", "single $tableName record");
+                    $this->openapi->set("components|responses|$operation-$tableName|description", "single $tableName record");
                 }
-                $this->openapi->set("components|responses|$operation-$normalizedTableName|content|application/json|schema|\$ref", "#/components/schemas/$operation-$normalizedTableName");
+                $this->openapi->set("components|responses|$operation-$tableName|content|application/json|schema|\$ref", "#/components/schemas/$operation-" . rawurlencode($tableName));
             }
         }
 
         private function setComponentRequestBody(string $tableName) /*: void*/
         {
-            $normalizedTableName = $this->normalize($tableName);
             $table = $this->reflection->getTable($tableName);
             $type = $table->getType();
             $pk = $table->getPk();
@@ -9897,8 +9125,8 @@ namespace Tqdev\PhpCrudApi\OpenApi {
                     if (!$this->isOperationOnTableAllowed($operation, $tableName)) {
                         continue;
                     }
-                    $this->openapi->set("components|requestBodies|$operation-$normalizedTableName|description", "single $tableName record");
-                    $this->openapi->set("components|requestBodies|$operation-$normalizedTableName|content|application/json|schema|\$ref", "#/components/schemas/$operation-$normalizedTableName");
+                    $this->openapi->set("components|requestBodies|$operation-$tableName|description", "single $tableName record");
+                    $this->openapi->set("components|requestBodies|$operation-$tableName|content|application/json|schema|\$ref", "#/components/schemas/$operation-" . rawurlencode($tableName));
                 }
             }
         }
@@ -9965,10 +9193,9 @@ namespace Tqdev\PhpCrudApi\OpenApi {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/OpenApi/OpenApiService.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/OpenApi/OpenApiService.php
 namespace Tqdev\PhpCrudApi\OpenApi {
 
-    use Psr\Http\Message\ServerRequestInterface;
     use Tqdev\PhpCrudApi\Column\ReflectionService;
     use Tqdev\PhpCrudApi\OpenApi\OpenApiBuilder;
 
@@ -9981,94 +9208,14 @@ namespace Tqdev\PhpCrudApi\OpenApi {
             $this->builder = new OpenApiBuilder($reflection, $base, $controllers, $customBuilders);
         }
 
-        public function get(ServerRequestInterface $request): OpenApiDefinition
+        public function get(): OpenApiDefinition
         {
-            return $this->builder->build($request);
+            return $this->builder->build();
         }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/OpenApi/OpenApiStatusBuilder.php
-namespace Tqdev\PhpCrudApi\OpenApi {
-
-    use Tqdev\PhpCrudApi\OpenApi\OpenApiDefinition;
-
-    class OpenApiStatusBuilder
-    {
-        private $openapi;
-        private $operations = [
-            'status' => [
-                'ping' => 'get',
-            ],
-        ];
-
-        public function __construct(OpenApiDefinition $openapi)
-        {
-            $this->openapi = $openapi;
-        }
-
-        public function build() /*: void*/
-        {
-            $this->setPaths();
-            $this->setComponentSchema();
-            $this->setComponentResponse();
-            foreach (array_keys($this->operations) as $index => $type) {
-                $this->setTag($index, $type);
-            }
-        }
-
-        private function setPaths() /*: void*/
-        {
-            foreach ($this->operations as $type => $operationPair) {
-                foreach ($operationPair as $operation => $method) {
-                    $path = "/$type/$operation";
-                    $this->openapi->set("paths|$path|$method|tags|0", "$type");
-                    $this->openapi->set("paths|$path|$method|operationId", "$operation" . "_" . "$type");
-                    $this->openapi->set("paths|$path|$method|description", "Request API '$operation' status");
-                    $this->openapi->set("paths|$path|$method|responses|200|\$ref", "#/components/responses/$operation-$type");
-
-                }
-            }
-        }
-
-        private function setComponentSchema() /*: void*/
-        {
-            foreach ($this->operations as $type => $operationPair) {
-                foreach ($operationPair as $operation => $method) {
-                    $prefix = "components|schemas|$operation-$type";
-                    $this->openapi->set("$prefix|type", "object");
-                    switch ($operation) {
-                        case 'ping':
-                            $this->openapi->set("$prefix|required", ['db', 'cache']);
-                            $this->openapi->set("$prefix|properties|db|type", 'integer');
-                            $this->openapi->set("$prefix|properties|db|format", "int64");
-                            $this->openapi->set("$prefix|properties|cache|type", 'integer');
-                            $this->openapi->set("$prefix|properties|cache|format", "int64");
-                            break;
-                    }
-                }
-            }
-        }
-
-        private function setComponentResponse() /*: void*/
-        {
-            foreach ($this->operations as $type => $operationPair) {
-                foreach ($operationPair as $operation => $method) {
-                    $this->openapi->set("components|responses|$operation-$type|description", "$operation status record");
-                    $this->openapi->set("components|responses|$operation-$type|content|application/json|schema|\$ref", "#/components/schemas/$operation-$type");
-                }
-            }
-        }
-
-        private function setTag(int $index, string $type) /*: void*/
-        {
-            $this->openapi->set("tags|$index|name", "$type");
-            $this->openapi->set("tags|$index|description", "$type operations");
-        }
-    }
-}
-
-// file: src/Tqdev/PhpCrudApi/Record/Condition/AndCondition.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/Condition/AndCondition.php
 namespace Tqdev\PhpCrudApi\Record\Condition {
 
     class AndCondition extends Condition
@@ -10105,7 +9252,7 @@ namespace Tqdev\PhpCrudApi\Record\Condition {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/Condition/ColumnCondition.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/Condition/ColumnCondition.php
 namespace Tqdev\PhpCrudApi\Record\Condition {
 
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedColumn;
@@ -10140,7 +9287,7 @@ namespace Tqdev\PhpCrudApi\Record\Condition {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/Condition/Condition.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/Condition/Condition.php
 namespace Tqdev\PhpCrudApi\Record\Condition {
 
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedTable;
@@ -10186,7 +9333,8 @@ namespace Tqdev\PhpCrudApi\Record\Condition {
                 if (substr($command, 0, 1) == 'n') {
                     $negate = true;
                     $command = substr($command, 1);
-                } else if (substr($command, 0, 1) == 's') {
+                }
+                if (substr($command, 0, 1) == 's') {
                     $spatial = true;
                     $command = substr($command, 1);
                 }
@@ -10208,7 +9356,7 @@ namespace Tqdev\PhpCrudApi\Record\Condition {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/Condition/NoCondition.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/Condition/NoCondition.php
 namespace Tqdev\PhpCrudApi\Record\Condition {
 
     class NoCondition extends Condition
@@ -10230,7 +9378,7 @@ namespace Tqdev\PhpCrudApi\Record\Condition {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/Condition/NotCondition.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/Condition/NotCondition.php
 namespace Tqdev\PhpCrudApi\Record\Condition {
 
     class NotCondition extends Condition
@@ -10249,7 +9397,7 @@ namespace Tqdev\PhpCrudApi\Record\Condition {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/Condition/OrCondition.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/Condition/OrCondition.php
 namespace Tqdev\PhpCrudApi\Record\Condition {
 
     class OrCondition extends Condition
@@ -10286,7 +9434,7 @@ namespace Tqdev\PhpCrudApi\Record\Condition {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/Condition/SpatialCondition.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/Condition/SpatialCondition.php
 namespace Tqdev\PhpCrudApi\Record\Condition {
 
     class SpatialCondition extends ColumnCondition
@@ -10294,78 +9442,51 @@ namespace Tqdev\PhpCrudApi\Record\Condition {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/Document/ErrorDocument.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/Document/ErrorDocument.php
 namespace Tqdev\PhpCrudApi\Record\Document {
 
     use Tqdev\PhpCrudApi\Record\ErrorCode;
 
     class ErrorDocument implements \JsonSerializable
     {
-        public $errorCode;
-        public $argument;
+        public $code;
+        public $message;
         public $details;
 
         public function __construct(ErrorCode $errorCode, string $argument, $details)
         {
-            $this->errorCode = $errorCode;
-            $this->argument = $argument;
+            $this->code = $errorCode->getCode();
+            $this->message = $errorCode->getMessage($argument);
             $this->details = $details;
-        }
-
-        public function getStatus(): int
-        {
-            return $this->errorCode->getStatus();
         }
 
         public function getCode(): int
         {
-            return $this->errorCode->getCode();
+            return $this->code;
         }
 
         public function getMessage(): string
         {
-            return $this->errorCode->getMessage($this->argument);
+            return $this->message;
         }
 
         public function serialize()
         {
             return [
-                'code' => $this->getCode(),
-                'message' => $this->getMessage(),
+                'code' => $this->code,
+                'message' => $this->message,
                 'details' => $this->details,
             ];
         }
 
         public function jsonSerialize()
         {
-            return array_filter($this->serialize(), function($v) {return $v!==null;});
-        }
-
-        public static function fromException(\Throwable $exception, bool $debug)
-        {
-            $document = new ErrorDocument(new ErrorCode(ErrorCode::ERROR_NOT_FOUND), $exception->getMessage(), null);
-            if ($exception instanceof \PDOException) {
-                if (strpos(strtolower($exception->getMessage()), 'duplicate') !== false) {
-                    $document = new ErrorDocument(new ErrorCode(ErrorCode::DUPLICATE_KEY_EXCEPTION), '', null);
-                } elseif (strpos(strtolower($exception->getMessage()), 'unique constraint') !== false) {
-                    $document = new ErrorDocument(new ErrorCode(ErrorCode::DUPLICATE_KEY_EXCEPTION), '', null);
-                } elseif (strpos(strtolower($exception->getMessage()), 'default value') !== false) {
-                    $document = new ErrorDocument(new ErrorCode(ErrorCode::DATA_INTEGRITY_VIOLATION), '', null);
-                } elseif (strpos(strtolower($exception->getMessage()), 'allow nulls') !== false) {
-                    $document = new ErrorDocument(new ErrorCode(ErrorCode::DATA_INTEGRITY_VIOLATION), '', null);
-                } elseif (strpos(strtolower($exception->getMessage()), 'constraint') !== false) {
-                    $document = new ErrorDocument(new ErrorCode(ErrorCode::DATA_INTEGRITY_VIOLATION), '', null);
-                } else {
-                    $message = $debug?$exception->getMessage():'PDOException occurred (enable debug mode)';
-                    $document = new ErrorDocument(new ErrorCode(ErrorCode::ERROR_NOT_FOUND), $message, null);
-                }
-            }
-            return $document;
+            return array_filter($this->serialize());
         }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/Document/ListDocument.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/Document/ListDocument.php
 namespace Tqdev\PhpCrudApi\Record\Document {
 
     class ListDocument implements \JsonSerializable
@@ -10401,13 +9522,13 @@ namespace Tqdev\PhpCrudApi\Record\Document {
         public function jsonSerialize()
         {
             return array_filter($this->serialize(), function ($v) {
-                return $v !== -1;
+                return $v !== 0;
             });
         }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/ColumnIncluder.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/ColumnIncluder.php
 namespace Tqdev\PhpCrudApi\Record {
 
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedTable;
@@ -10479,7 +9600,7 @@ namespace Tqdev\PhpCrudApi\Record {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/ErrorCode.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/ErrorCode.php
 namespace Tqdev\PhpCrudApi\Record {
 
     use Tqdev\PhpCrudApi\ResponseFactory;
@@ -10511,11 +9632,9 @@ namespace Tqdev\PhpCrudApi\Record {
         const BAD_OR_MISSING_XSRF_TOKEN = 1017;
         const ONLY_AJAX_REQUESTS_ALLOWED = 1018;
         const PAGINATION_FORBIDDEN = 1019;
-        const USER_ALREADY_EXIST = 1020;
-        const PASSWORD_TOO_SHORT = 1021;
 
         private $values = [
-            0000 => ["Success", ResponseFactory::OK],
+            9999 => ["%s", ResponseFactory::INTERNAL_SERVER_ERROR],
             1000 => ["Route '%s' not found", ResponseFactory::NOT_FOUND],
             1001 => ["Table '%s' not found", ResponseFactory::NOT_FOUND],
             1002 => ["Argument count mismatch in '%s'", ResponseFactory::UNPROCESSABLE_ENTITY],
@@ -10536,9 +9655,6 @@ namespace Tqdev\PhpCrudApi\Record {
             1017 => ["Bad or missing XSRF token", ResponseFactory::FORBIDDEN],
             1018 => ["Only AJAX requests allowed for '%s'", ResponseFactory::FORBIDDEN],
             1019 => ["Pagination forbidden", ResponseFactory::FORBIDDEN],
-            1020 => ["User '%s' already exists", ResponseFactory::CONFLICT],
-            1021 => ["Password too short (<%d characters)", ResponseFactory::UNPROCESSABLE_ENTITY],
-            9999 => ["%s", ResponseFactory::INTERNAL_SERVER_ERROR],
         ];
 
         public function __construct(int $code)
@@ -10568,7 +9684,7 @@ namespace Tqdev\PhpCrudApi\Record {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/FilterInfo.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/FilterInfo.php
 namespace Tqdev\PhpCrudApi\Record {
 
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedTable;
@@ -10579,19 +9695,27 @@ namespace Tqdev\PhpCrudApi\Record {
 
     class FilterInfo
     {
+        private function addConditionFromFilterPath(PathTree $conditions, array $path, ReflectedTable $table, array $params)
+        {
+            $key = 'filter' . implode('', $path);
+            if (isset($params[$key])) {
+                foreach ($params[$key] as $filter) {
+                    $condition = Condition::fromString($table, $filter);
+                    if (($condition instanceof NoCondition) == false) {
+                        $conditions->put($path, $condition);
+                    }
+                }
+            }
+        }
+
         private function getConditionsAsPathTree(ReflectedTable $table, array $params): PathTree
         {
             $conditions = new PathTree();
-            foreach ($params as $key => $filters) {
-                if (substr($key, 0, 6) == 'filter') {
-                    preg_match_all('/\d+|\D+/', substr($key, 6), $matches);
-                    $path = $matches[0];
-                    foreach ($filters as $filter) {
-                        $condition = Condition::fromString($table, $filter);
-                        if (($condition instanceof NoCondition) == false) {
-                            $conditions->put($path, $condition);
-                        }
-                    }
+            $this->addConditionFromFilterPath($conditions, [], $table, $params);
+            for ($n = ord('0'); $n <= ord('9'); $n++) {
+                $this->addConditionFromFilterPath($conditions, [chr($n)], $table, $params);
+                for ($l = ord('a'); $l <= ord('f'); $l++) {
+                    $this->addConditionFromFilterPath($conditions, [chr($n), chr($l)], $table, $params);
                 }
             }
             return $conditions;
@@ -10616,7 +9740,7 @@ namespace Tqdev\PhpCrudApi\Record {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/HabtmValues.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/HabtmValues.php
 namespace Tqdev\PhpCrudApi\Record {
 
     class HabtmValues
@@ -10632,7 +9756,7 @@ namespace Tqdev\PhpCrudApi\Record {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/OrderingInfo.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/OrderingInfo.php
 namespace Tqdev\PhpCrudApi\Record {
 
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedTable;
@@ -10680,7 +9804,7 @@ namespace Tqdev\PhpCrudApi\Record {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/PaginationInfo.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/PaginationInfo.php
 namespace Tqdev\PhpCrudApi\Record {
 
     class PaginationInfo
@@ -10750,7 +9874,7 @@ namespace Tqdev\PhpCrudApi\Record {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/PathTree.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/PathTree.php
 namespace Tqdev\PhpCrudApi\Record {
 
     class PathTree implements \JsonSerializable
@@ -10831,7 +9955,7 @@ namespace Tqdev\PhpCrudApi\Record {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/RecordService.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/RecordService.php
 namespace Tqdev\PhpCrudApi\Record {
 
     use Tqdev\PhpCrudApi\Column\ReflectionService;
@@ -10888,21 +10012,6 @@ namespace Tqdev\PhpCrudApi\Record {
             return $this->reflection->getType($table);
         }
 
-        public function beginTransaction() /*: void*/
-        {
-            $this->db->beginTransaction();
-        }
-
-        public function commitTransaction() /*: void*/
-        {
-            $this->db->commitTransaction();
-        }
-
-        public function rollBackTransaction() /*: void*/
-        {
-            $this->db->rollBackTransaction();
-        }
-
         public function create(string $tableName, /* object */ $record, array $params) /*: ?int*/
         {
             $this->sanitizeRecord($tableName, $record, '');
@@ -10957,7 +10066,7 @@ namespace Tqdev\PhpCrudApi\Record {
             if (!$this->pagination->hasPage($params)) {
                 $offset = 0;
                 $limit = $this->pagination->getPageLimit($params);
-                $count = -1;
+                $count = 0;
             } else {
                 $offset = $this->pagination->getPageOffset($params);
                 $limit = $this->pagination->getPageLimit($params);
@@ -10967,15 +10076,10 @@ namespace Tqdev\PhpCrudApi\Record {
             $this->joiner->addJoins($table, $records, $params, $this->db);
             return new ListDocument($records, $count);
         }
-
-        public function ping(): int
-        {
-            return $this->db->ping();
-        }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Record/RelationJoiner.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Record/RelationJoiner.php
 namespace Tqdev\PhpCrudApi\Record {
 
     use Tqdev\PhpCrudApi\Column\Reflection\ReflectedTable;
@@ -11038,9 +10142,6 @@ namespace Tqdev\PhpCrudApi\Record {
                 foreach ($params['join'] as $tableNames) {
                     $path = array();
                     foreach (explode(',', $tableNames) as $tableName) {
-                        if (!$this->reflection->hasTable($tableName)) {
-                            continue;
-                        }
                         $t = $this->reflection->getTable($tableName);
                         if ($t != null) {
                             $path[] = $t->getName();
@@ -11272,7 +10373,7 @@ namespace Tqdev\PhpCrudApi\Record {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Api.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Api.php
 namespace Tqdev\PhpCrudApi {
 
     use Psr\Http\Message\ResponseInterface;
@@ -11287,11 +10388,8 @@ namespace Tqdev\PhpCrudApi {
     use Tqdev\PhpCrudApi\Controller\JsonResponder;
     use Tqdev\PhpCrudApi\Controller\OpenApiController;
     use Tqdev\PhpCrudApi\Controller\RecordController;
-    use Tqdev\PhpCrudApi\Controller\StatusController;
     use Tqdev\PhpCrudApi\Database\GenericDB;
     use Tqdev\PhpCrudApi\GeoJson\GeoJsonService;
-    use Tqdev\PhpCrudApi\Middleware\ApiKeyAuthMiddleware;
-    use Tqdev\PhpCrudApi\Middleware\ApiKeyDbAuthMiddleware;
     use Tqdev\PhpCrudApi\Middleware\AuthorizationMiddleware;
     use Tqdev\PhpCrudApi\Middleware\BasicAuthMiddleware;
     use Tqdev\PhpCrudApi\Middleware\CorsMiddleware;
@@ -11300,16 +10398,13 @@ namespace Tqdev\PhpCrudApi {
     use Tqdev\PhpCrudApi\Middleware\FirewallMiddleware;
     use Tqdev\PhpCrudApi\Middleware\IpAddressMiddleware;
     use Tqdev\PhpCrudApi\Middleware\JoinLimitsMiddleware;
-    use Tqdev\PhpCrudApi\Middleware\JsonMiddleware;
     use Tqdev\PhpCrudApi\Middleware\JwtAuthMiddleware;
     use Tqdev\PhpCrudApi\Middleware\MultiTenancyMiddleware;
     use Tqdev\PhpCrudApi\Middleware\PageLimitsMiddleware;
     use Tqdev\PhpCrudApi\Middleware\ReconnectMiddleware;
     use Tqdev\PhpCrudApi\Middleware\Router\SimpleRouter;
     use Tqdev\PhpCrudApi\Middleware\SanitationMiddleware;
-    use Tqdev\PhpCrudApi\Middleware\SslRedirectMiddleware;
     use Tqdev\PhpCrudApi\Middleware\ValidationMiddleware;
-    use Tqdev\PhpCrudApi\Middleware\XmlMiddleware;
     use Tqdev\PhpCrudApi\Middleware\XsrfMiddleware;
     use Tqdev\PhpCrudApi\OpenApi\OpenApiService;
     use Tqdev\PhpCrudApi\Record\ErrorCode;
@@ -11329,31 +10424,21 @@ namespace Tqdev\PhpCrudApi {
                 $config->getAddress(),
                 $config->getPort(),
                 $config->getDatabase(),
-                $config->getTables(),
                 $config->getUsername(),
                 $config->getPassword()
             );
             $prefix = sprintf('phpcrudapi-%s-', substr(md5(__FILE__), 0, 8));
             $cache = CacheFactory::create($config->getCacheType(), $prefix, $config->getCachePath());
             $reflection = new ReflectionService($db, $cache, $config->getCacheTime());
-            $responder = new JsonResponder($config->getDebug());
-            $router = new SimpleRouter($config->getBasePath(), $responder, $cache, $config->getCacheTime());
+            $responder = new JsonResponder();
+            $router = new SimpleRouter($config->getBasePath(), $responder, $cache, $config->getCacheTime(), $config->getDebug());
             foreach ($config->getMiddlewares() as $middleware => $properties) {
                 switch ($middleware) {
-                    case 'sslRedirect':
-                        new SslRedirectMiddleware($router, $responder, $properties);
-                        break;
                     case 'cors':
-                        new CorsMiddleware($router, $responder, $properties, $config->getDebug());
+                        new CorsMiddleware($router, $responder, $properties);
                         break;
                     case 'firewall':
                         new FirewallMiddleware($router, $responder, $properties);
-                        break;
-                    case 'apiKeyAuth':
-                        new ApiKeyAuthMiddleware($router, $responder, $properties);
-                        break;
-                    case 'apiKeyDbAuth':
-                        new ApiKeyDbAuthMiddleware($router, $responder, $properties, $reflection, $db);
                         break;
                     case 'basicAuth':
                         new BasicAuthMiddleware($router, $responder, $properties);
@@ -11394,13 +10479,7 @@ namespace Tqdev\PhpCrudApi {
                     case 'customization':
                         new CustomizationMiddleware($router, $responder, $properties, $reflection);
                         break;
-                    case 'xml':
-                        new XmlMiddleware($router, $responder, $properties, $reflection);
-                        break;
-                    case 'json':
-                        new JsonMiddleware($router, $responder, $properties);
-                        break;
-                    }
+                }
             }
             foreach ($config->getControllers() as $controller) {
                 switch ($controller) {
@@ -11424,9 +10503,6 @@ namespace Tqdev\PhpCrudApi {
                         $geoJson = new GeoJsonService($reflection, $records);
                         new GeoJsonController($router, $responder, $geoJson);
                         break;
-                    case 'status':
-                        new StatusController($router, $responder, $cache, $db);
-                        break;                    
                 }
             }
             foreach ($config->getCustomControllers() as $className) {
@@ -11442,7 +10518,7 @@ namespace Tqdev\PhpCrudApi {
 
         private function parseBody(string $body) /*: ?object*/
         {
-            $first = substr(ltrim($body), 0, 1);
+            $first = substr($body, 0, 1);
             if ($first == '[' || $first == '{') {
                 $object = json_decode($body);
                 $causeCode = json_last_error();
@@ -11466,17 +10542,12 @@ namespace Tqdev\PhpCrudApi {
         {
             $parsedBody = $request->getParsedBody();
             if ($parsedBody) {
-                $request = $this->applyParsedBodyHack($request);
+                $request = $this->applySlimHack($request);
             } else {
                 $body = $request->getBody();
-                if ($body->isReadable()) {
-                    if ($body->isSeekable()) {
-                        $body->rewind();
-                    }
+                if ($body->isReadable() && $body->isSeekable()) {
                     $contents = $body->getContents();
-                    if ($body->isSeekable()) {
-                        $body->rewind();
-                    }
+                    $body->rewind();
                     if ($contents) {
                         $parsedBody = $this->parseBody($contents);
                         $request = $request->withParsedBody($parsedBody);
@@ -11486,10 +10557,11 @@ namespace Tqdev\PhpCrudApi {
             return $request;
         }
 
-        private function applyParsedBodyHack(ServerRequestInterface $request): ServerRequestInterface
+        private function applySlimHack(ServerRequestInterface $request): ServerRequestInterface
         {
-            $parsedBody = $request->getParsedBody();
-            if (is_array($parsedBody)) { // is it really?
+            $class = get_class($request);
+            if (in_array($class, ['Slim\Http\Request', 'Slim\Http\Request'])) {
+                $parsedBody = $request->getParsedBody();
                 $contents = json_encode($parsedBody);
                 $parsedBody = $this->parseBody($contents);
                 $request = $request->withParsedBody($parsedBody);
@@ -11499,12 +10571,21 @@ namespace Tqdev\PhpCrudApi {
 
         public function handle(ServerRequestInterface $request): ResponseInterface
         {
-            return $this->router->route($this->addParsedBody($request));
+            $response = null;
+            try {
+                $response = $this->router->route($this->addParsedBody($request));
+            } catch (\Throwable $e) {
+                $response = $this->responder->error(ErrorCode::ERROR_NOT_FOUND, $e->getMessage());
+                if ($this->debug) {
+                    $response = ResponseUtils::addExceptionHeaders($response, $e);
+                }
+            }
+            return $response;
         }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/Config.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/Config.php
 namespace Tqdev\PhpCrudApi {
 
     class Config
@@ -11516,9 +10597,8 @@ namespace Tqdev\PhpCrudApi {
             'username' => null,
             'password' => null,
             'database' => null,
-            'tables' => '',
-            'middlewares' => 'cors,errors',
-            'controllers' => 'records,geojson,openapi,status',
+            'middlewares' => 'cors',
+            'controllers' => 'records,geojson,openapi',
             'customControllers' => '',
             'customOpenApiBuilders' => '',
             'cacheType' => 'TempFile',
@@ -11546,8 +10626,6 @@ namespace Tqdev\PhpCrudApi {
                     return 5432;
                 case 'sqlsrv':
                     return 1433;
-                case 'sqlite':
-                    return 0;
             }
         }
 
@@ -11560,8 +10638,6 @@ namespace Tqdev\PhpCrudApi {
                     return 'localhost';
                 case 'sqlsrv':
                     return 'localhost';
-                case 'sqlite':
-                    return 'data.db';
             }
         }
 
@@ -11572,16 +10648,6 @@ namespace Tqdev\PhpCrudApi {
                 'address' => $this->getDefaultAddress($driver),
                 'port' => $this->getDefaultPort($driver),
             ];
-        }
-
-        private function applyEnvironmentVariables(array $values): array
-        {
-            $newValues = array();
-            foreach ($values as $key => $value) {
-                $environmentKey = 'PHP_CRUD_API_' . strtoupper(preg_replace('/(?<!^)[A-Z]/', '_$0', str_replace('.', '_', $key)));
-                $newValues[$key] = getenv($environmentKey, true) ?: $value;
-            }
-            return $newValues;
         }
 
         public function __construct(array $values)
@@ -11595,7 +10661,6 @@ namespace Tqdev\PhpCrudApi {
                 $key = array_keys($diff)[0];
                 throw new \Exception("Config has invalid value '$key'");
             }
-            $newValues = $this->applyEnvironmentVariables($newValues);
             $this->values = $newValues;
         }
 
@@ -11653,11 +10718,6 @@ namespace Tqdev\PhpCrudApi {
             return $this->values['database'];
         }
 
-        public function getTables(): array
-        {
-            return array_filter(array_map('trim', explode(',', $this->values['tables'])));
-        }
-
         public function getMiddlewares(): array
         {
             return $this->values['middlewares'];
@@ -11710,7 +10770,7 @@ namespace Tqdev\PhpCrudApi {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/RequestFactory.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/RequestFactory.php
 namespace Tqdev\PhpCrudApi {
 
     use Nyholm\Psr7\Factory\Psr17Factory;
@@ -11754,7 +10814,7 @@ namespace Tqdev\PhpCrudApi {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/RequestUtils.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/RequestUtils.php
 namespace Tqdev\PhpCrudApi {
 
     use Psr\Http\Message\ServerRequestInterface;
@@ -11778,8 +10838,7 @@ namespace Tqdev\PhpCrudApi {
         {
             $params = array();
             $query = $request->getUri()->getQuery();
-            //$query = str_replace('][]=', ']=', str_replace('=', '[]=', $query));
-            $query = str_replace('%5D%5B%5D=', '%5D=', str_replace('=', '%5B%5D=', $query));
+            $query = str_replace('][]=', ']=', str_replace('=', '[]=', $query));
             parse_str($query, $params);
             return $params;
         }
@@ -11804,7 +10863,6 @@ namespace Tqdev\PhpCrudApi {
                     return 'document';
                 case 'columns':
                     return $method == 'get' ? 'reflect' : 'remodel';
-                case 'geojson':
                 case 'records':
                     switch ($method) {
                         case 'POST':
@@ -11852,31 +10910,10 @@ namespace Tqdev\PhpCrudApi {
             }
             return $allTableNames;
         }
-
-        public static function toString(ServerRequestInterface $request): string
-        {
-            $method = $request->getMethod();
-            $uri = $request->getUri()->__toString();
-            $headers = $request->getHeaders();
-            $request->getBody()->rewind();
-            $body = $request->getBody()->getContents();
-
-            $str = "$method $uri\n";
-            foreach ($headers as $key => $values) {
-                foreach ($values as $value) {
-                    $str .= "$key: $value\n";
-                }
-            }
-            if ($body !== '') {
-                $str .= "\n";
-                $str .= "$body\n";
-            }
-            return $str;
-        }
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/ResponseFactory.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/ResponseFactory.php
 namespace Tqdev\PhpCrudApi {
 
     use Nyholm\Psr7\Factory\Psr17Factory;
@@ -11885,25 +10922,18 @@ namespace Tqdev\PhpCrudApi {
     class ResponseFactory
     {
         const OK = 200;
-        const MOVED_PERMANENTLY = 301;
-        const FOUND = 302;
         const UNAUTHORIZED = 401;
         const FORBIDDEN = 403;
         const NOT_FOUND = 404;
         const METHOD_NOT_ALLOWED = 405;
         const CONFLICT = 409;
         const UNPROCESSABLE_ENTITY = 422;
-        const FAILED_DEPENDENCY = 424;
         const INTERNAL_SERVER_ERROR = 500;
-
-        public static function fromXml(int $status, string $xml): ResponseInterface
-        {
-            return self::from($status, 'text/xml', $xml);
-        }
 
         public static function fromCsv(int $status, string $csv): ResponseInterface
         {
-            return self::from($status, 'text/csv', $csv);
+            $response = self::from($status, 'text/csv', $csv);
+            return $response->withHeader('Content-Type', 'text/csv');
         }
 
         public static function fromHtml(int $status, string $html): ResponseInterface
@@ -11917,14 +10947,14 @@ namespace Tqdev\PhpCrudApi {
             return self::from($status, 'application/json', $content);
         }
 
-        public static function from(int $status, string $contentType, string $content): ResponseInterface
+        private static function from(int $status, string $contentType, string $content): ResponseInterface
         {
             $psr17Factory = new Psr17Factory();
             $response = $psr17Factory->createResponse($status);
             $stream = $psr17Factory->createStream($content);
             $stream->rewind();
             $response = $response->withBody($stream);
-            $response = $response->withHeader('Content-Type', $contentType . '; charset=utf-8');
+            $response = $response->withHeader('Content-Type', $contentType);
             $response = $response->withHeader('Content-Length', strlen($content));
             return $response;
         }
@@ -11937,7 +10967,7 @@ namespace Tqdev\PhpCrudApi {
     }
 }
 
-// file: src/Tqdev/PhpCrudApi/ResponseUtils.php
+// file: vendor/mevdschee/php-crud-api/src/Tqdev/PhpCrudApi/ResponseUtils.php
 namespace Tqdev\PhpCrudApi {
 
     use Psr\Http\Message\ResponseInterface;
@@ -11971,7 +11001,6 @@ namespace Tqdev\PhpCrudApi {
         {
             $status = $response->getStatusCode();
             $headers = $response->getHeaders();
-            $response->getBody()->rewind();
             $body = $response->getBody()->getContents();
 
             $str = "$status\n";
@@ -11989,28 +11018,1415 @@ namespace Tqdev\PhpCrudApi {
     }
 }
 
-// file: src/index.php
-namespace Tqdev\PhpCrudApi {
+// file: src/Tqdev/PhpCrudAdmin/Client/ApiCaller.php
+namespace Tqdev\PhpCrudAdmin\Client {
+
+    interface ApiCaller
+    {
+        function call(string $method, string $path, array $args = [], $data = false);
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Client/CrudApi.php
+namespace Tqdev\PhpCrudAdmin\Client {
+
+    class CrudApi
+    {
+        private $caller;
+
+        public function __construct(ApiCaller $caller)
+        {
+            $this->caller = $caller;
+        }
+
+        public function readDatabase(array $args)
+        {
+            return $this->caller->call('GET', '/columns', $args);
+        }
+
+        public function readTable(string $table, array $args)
+        {
+            return $this->caller->call('GET', '/columns/' . rawurlencode($table), $args);
+        }
+
+        public function readColumn(string $table, string $column, array $args)
+        {
+            return $this->caller->call('GET', '/columns/' . rawurlencode($table) . '/' . rawurlencode($column), $args);
+        }
+
+        public function updateColumn(string $table, string $column, array $data)
+        {
+            return $this->caller->call('PUT', '/columns/' . rawurlencode($table) . '/' . rawurlencode($column), [], $data);
+        }
+
+        public function createColumn(string $table, array $data)
+        {
+            return $this->caller->call('POST', '/columns/' . rawurlencode($table), [], $data);
+        }
+
+        public function deleteColumn(string $table, string $column)
+        {
+            return $this->caller->call('DELETE', '/columns/' . rawurlencode($table) . '/' . rawurlencode($column), []);
+        }
+
+        public function createTable(array $data)
+        {
+            return $this->caller->call('POST', '/columns', [], $data);
+        }
+
+        public function deleteTable(string $table)
+        {
+            return $this->caller->call('DELETE', '/columns/' . rawurlencode($table), []);
+        }
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Client/CurlCaller.php
+namespace Tqdev\PhpCrudAdmin\Client {
+
+    class CurlCaller implements ApiCaller
+    {
+        private $url;
+
+        public function __construct(string $url)
+        {
+            $this->url = $url;
+        }
+
+        public function call(string $method, string $path, array $args = [], $data = false)
+        {
+            $query = rtrim('?' . preg_replace('|%5B[0-9]+%5D|', '', http_build_query($args)), '?');
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+            curl_setopt($ch, CURLOPT_URL, $this->url . $path . $query);
+            if ($data) {
+                $content = json_encode($data);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $content);
+                $headers = array();
+                $headers[] = 'Content-Type: application/json';
+                $headers[] = 'Content-Length: ' . strlen($content);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            }
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            $response = curl_exec($ch);
+            curl_close($ch);
+            return json_decode($response, true);
+        }
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Client/LocalCaller.php
+namespace Tqdev\PhpCrudAdmin\Client {
 
     use Tqdev\PhpCrudApi\Api;
     use Tqdev\PhpCrudApi\Config;
     use Tqdev\PhpCrudApi\RequestFactory;
+
+    class LocalCaller implements ApiCaller
+    {
+        private $config;
+
+        public function __construct(array $config)
+        {
+            $this->config = $config;
+        }
+
+        public function call(string $method, string $path, array $args = [], $data = false)
+        {
+            $query = rtrim('?' . preg_replace('|%5B[0-9]+%5D|', '', http_build_query($args)), '?');
+            $config = new Config($this->config);
+            $body = '';
+            if ($data !== false) {
+                $body = json_encode($data);
+            }
+            $request = RequestFactory::fromString(trim("$method $path$query\n\n$body"));
+            $api = new Api($config);
+            $response = $api->handle($request);
+            return json_decode($response->getBody(), true);
+        }
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Column/ColumnService.php
+namespace Tqdev\PhpCrudAdmin\Column {
+
+    use Tqdev\PhpCrudAdmin\Client\CrudApi;
+    use Tqdev\PhpCrudAdmin\Column\DefinitionService;
+    use Tqdev\PhpCrudAdmin\Document\TemplateDocument;
+
+    class ColumnService
+    {
+        private $api;
+        private $definition;
+
+        public function __construct(CrudApi $api, DefinitionService $definition)
+        {
+            $this->api = $api;
+            $this->definition = $definition;
+        }
+
+        public function hasTable(string $table, string $action): bool
+        {
+            return $this->definition->hasTable($table, $action);
+        }
+
+        private function getDataTypeValues(): array
+        {
+            $types = array('bigint', 'bit', 'blob', 'boolean', 'clob', 'date', 'decimal', 'double', 'float', 'geometry', 'integer', 'time', 'timestamp', 'varbinary', 'varchar');
+            return array_combine($types, $types);
+        }
+
+        private function getTableNameValues(): array
+        {
+            $tables = $this->definition->getTableNames();
+            return array_combine($tables, $tables);
+        }
+
+        private function getBooleanValues(): array
+        {
+            return array('no', 'yes');
+        }
+
+        private function makeForm(array $column): array
+        {
+            $form = array();
+            foreach ($column as $key => $value) {
+                $form[$key] = array('value' => $value, 'type' => 'text', 'required' => false);
+                switch ($key) {
+                    case 'name':
+                        $form[$key]['required'] = true;
+                        break;
+                    case 'type':
+                        $form[$key]['required'] = true;
+                        $form[$key]['type'] = 'select';
+                        $form[$key]['values'] = $this->getDataTypeValues();
+                        break;
+                    case 'length':
+                    case 'precision':
+                    case 'scale':
+                        $form[$key]['type'] = 'number';
+                        break;
+                    case 'nullable':
+                    case 'pk':
+                        $form[$key]['required'] = true;
+                        $form[$key]['type'] = 'select';
+                        $form[$key]['values'] = $this->getBooleanValues();
+                        break;
+                    case 'fk':
+                        $form[$key]['type'] = 'select';
+                        $form[$key]['values'] = $this->getTableNameValues();
+                        break;
+                }
+            }
+            return $form;
+        }
+
+        public function createForm(string $table, string $action): TemplateDocument
+        {
+            $column = $this->definition->getNewColumn();
+
+            $form = $this->makeForm($column);
+
+            $variables = array(
+                'table' => $table,
+                'action' => $action,
+                'form' => $form,
+            );
+
+            return new TemplateDocument('layouts/default', 'column/create', $variables);
+        }
+
+        public function create(string $table, string $action, /* object */ $column): TemplateDocument
+        {
+            $success = $this->api->createColumn($table, $column);
+
+            $variables = array(
+                'table' => $table,
+                'action' => $action,
+                'name' => $column['name'],
+                'success' => $success,
+            );
+
+            return new TemplateDocument('layouts/default', 'column/created', $variables);
+        }
+
+        public function updateForm(string $table, string $action, string $name): TemplateDocument
+        {
+            $column = $this->definition->getColumn($table, $name);
+
+            $form = $this->makeForm($column);
+
+            $variables = array(
+                'table' => $table,
+                'action' => $action,
+                'name' => $column['name'],
+                'form' => $form,
+            );
+
+            return new TemplateDocument('layouts/default', 'column/update', $variables);
+        }
+
+        public function update(string $table, string $action, string $name, /* object */ $column): TemplateDocument
+        {
+            $success = $this->api->updateColumn($table, $name, $column);
+
+            $variables = array(
+                'table' => $table,
+                'action' => $action,
+                'name' => $column['name'] ?: $name,
+                'success' => $success,
+            );
+
+            return new TemplateDocument('layouts/default', 'column/updated', $variables);
+        }
+
+        public function deleteForm(string $table, string $action, string $name): TemplateDocument
+        {
+            $column = $this->definition->getColumn($table, $name);
+
+            $variables = array(
+                'table' => $table,
+                'action' => $action,
+                'name' => $column['name'],
+            );
+
+            return new TemplateDocument('layouts/default', 'column/delete', $variables);
+        }
+
+        public function delete(string $table, string $action, string $name): TemplateDocument
+        {
+            $success = $this->api->deleteColumn($table, $name);
+
+            $variables = array(
+                'table' => $table,
+                'action' => $action,
+                'name' => $name,
+                'success' => $success,
+            );
+
+            return new TemplateDocument('layouts/default', 'column/deleted', $variables);
+        }
+
+        public function _list(string $table, string $action): TemplateDocument
+        {
+            $data = $this->definition->getTable($table);
+
+            $variables = array(
+                'table' => $table,
+                'action' => $action,
+                'columns' => $data['columns'],
+            );
+
+            return new TemplateDocument('layouts/default', 'column/list', $variables);
+        }
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Column/DefinitionService.php
+namespace Tqdev\PhpCrudAdmin\Column {
+
+    use Tqdev\PhpCrudAdmin\Client\CrudApi;
+
+    class DefinitionService
+    {
+        private $api;
+        private $database;
+
+        public function __construct(CrudApi $api)
+        {
+            $this->api = $api;
+            $this->database = $this->optimizeDatabase($this->api->readDatabase(array()));
+            $this->properties = array();
+        }
+
+        private function getColumnFields(): array
+        {
+            return array('name', 'type', 'length', 'precision', 'scale', 'nullable', 'pk', 'fk');
+        }
+
+        private function fillSparse(array $array): array
+        {
+            $full = array();
+            $keys = $this->getColumnFields();
+            foreach ($keys as $key) {
+                if (!key_exists($key, $array)) {
+                    $full[$key] = null;
+                } else {
+                    $full[$key] = $array[$key];
+                }
+            }
+            return $full;
+        }
+
+        private function fillAllSparse(array $array): array
+        {
+            $full = array();
+            foreach ($array as $key => $value) {
+                $full[$key] = $this->fillSparse($value);
+            }
+            return $full;
+        }
+
+        private function optimizeDatabase($database)
+        {
+            $database['tables'] = $this->makeNamed($database['tables']);
+            foreach ($database['tables'] as $name => $table) {
+                $database['tables'][$name]['columns'] = $this->fillAllSparse($this->makeNamed($table['columns']));
+            }
+            return $database;
+        }
+
+        private function makeNamed(array $array)
+        {
+            $named = array();
+            foreach ($array as $item) {
+                foreach ($item as $key => $value) {
+                    if ($key == 'name') {
+                        $named[$value] = $item;
+                        break;
+                    }
+                }
+            }
+            return $named;
+        }
+
+        public function hasTable(string $tableName): bool
+        {
+            return isset($this->database['tables'][$tableName]);
+        }
+
+        public function getTable(string $tableName)
+        {
+            return $this->database['tables'][$tableName];
+        }
+
+        public function getNewColumn()
+        {
+            return array_fill_keys($this->getColumnFields(), null);
+        }
+
+        public function getColumn(string $tableName, string $columnName)
+        {
+            return $this->database['tables'][$tableName]['columns'][$columnName];
+        }
+
+        public function getTableNames()
+        {
+            return array_keys(array_filter($this->database['tables'], function ($table) {
+                return $table['type'] == 'table';
+            }));
+        }
+
+        public function getViewNames()
+        {
+            return array_keys(array_filter($this->database['tables'], function ($table) {
+                return $table['type'] == 'view';
+            }));
+        }
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Column/TableService.php
+namespace Tqdev\PhpCrudAdmin\Column {
+
+    use Tqdev\PhpCrudAdmin\Client\CrudApi;
+    use Tqdev\PhpCrudAdmin\Column\DefinitionService;
+    use Tqdev\PhpCrudAdmin\Document\TemplateDocument;
+
+    class TableService
+    {
+        private $api;
+        private $definition;
+
+        public function __construct(CrudApi $api, DefinitionService $definition)
+        {
+            $this->api = $api;
+            $this->definition = $definition;
+        }
+
+        public function hasTable(string $action): bool
+        {
+            return $this->definition->hasTable($action);
+        }
+
+        private function makeForm(array $table): array
+        {
+            $form = array();
+            foreach ($table as $key => $value) {
+                $form[$key] = array('value' => $value, 'type' => 'text', 'required' => false);
+                switch ($key) {
+                    case 'name':
+                        $form[$key]['required'] = true;
+                        break;
+                }
+            }
+            return $form;
+        }
+
+        public function createForm(string $action): TemplateDocument
+        {
+            $table = array('name' => '');
+
+            $form = $this->makeForm($table);
+
+            $variables = array(
+                'action' => $action,
+                'form' => $form,
+            );
+
+            return new TemplateDocument('layouts/default', 'table/create', $variables);
+        }
+
+        public function create(string $action, /* object */ $table): TemplateDocument
+        {
+            $success = $this->api->createTable($table);
+
+            $variables = array(
+                'action' => $action,
+                'name' => $table['name'],
+                'success' => $success,
+            );
+
+            return new TemplateDocument('layouts/default', 'table/created', $variables);
+        }
+
+        public function deleteForm(string $action, string $name): TemplateDocument
+        {
+            $table = $this->definition->getTable($name);
+
+            $variables = array(
+                'action' => $action,
+                'table' => $table['name'],
+            );
+
+            return new TemplateDocument('layouts/default', 'table/delete', $variables);
+        }
+
+        public function delete(string $action, string $name): TemplateDocument
+        {
+            $success = $this->api->deleteTable($name);
+
+            $variables = array(
+                'action' => $action,
+                'table' => $name,
+                'success' => $success,
+            );
+
+            return new TemplateDocument('layouts/default', 'table/deleted', $variables);
+        }
+
+        public function _list(string $action): TemplateDocument
+        {
+            $tables = $this->definition->getTableNames();
+
+            $variables = array(
+                'action' => $action,
+                'tables' => $tables,
+            );
+
+            return new TemplateDocument('layouts/default', 'table/list', $variables);
+        }
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Controller/ColumnController.php
+namespace Tqdev\PhpCrudAdmin\Controller {
+
+    use Psr\Http\Message\ResponseInterface;
+    use Psr\Http\Message\ServerRequestInterface;
+    use Tqdev\PhpCrudApi\Controller\Responder;
+    use Tqdev\PhpCrudApi\Middleware\Router\Router;
+    use Tqdev\PhpCrudApi\Record\ErrorCode;
+    use Tqdev\PhpCrudApi\RequestUtils;
+    use Tqdev\PhpCrudAdmin\Column\ColumnService;
+
+    class ColumnController
+    {
+        private $service;
+        private $responder;
+
+        public function __construct(Router $router, Responder $responder, ColumnService $service)
+        {
+            $router->register('GET', '/admin/column/*/create', array($this, 'createForm'));
+            $router->register('POST', '/admin/column/*/create', array($this, 'create'));
+            $router->register('GET', '/admin/column/*/update/*', array($this, 'updateForm'));
+            $router->register('POST', '/admin/column/*/update/*', array($this, 'update'));
+            $router->register('GET', '/admin/column/*/delete/*', array($this, 'deleteForm'));
+            $router->register('POST', '/admin/column/*/delete/*', array($this, 'delete'));
+            $router->register('GET', '/admin/column/*/list', array($this, '_list'));
+            $this->service = $service;
+            $this->responder = $responder;
+        }
+
+        public function createForm(ServerRequestInterface $request): ResponseInterface
+        {
+            $table = RequestUtils::getPathSegment($request, 3);
+            $action = RequestUtils::getPathSegment($request, 4);
+            if (!$this->service->hasTable($table, $action)) {
+                return $this->responder->error(ErrorCode::TABLE_NOT_FOUND, $table);
+            }
+            $result = $this->service->createForm($table, $action);
+            return $this->responder->success($result);
+        }
+
+        public function create(ServerRequestInterface $request): ResponseInterface
+        {
+            $table = RequestUtils::getPathSegment($request, 3);
+            $action = RequestUtils::getPathSegment($request, 4);
+            if (!$this->service->hasTable($table, $action)) {
+                return $this->responder->error(ErrorCode::TABLE_NOT_FOUND, $table);
+            }
+            $column = $request->getParsedBody();
+            if ($column === null) {
+                return $this->responder->error(ErrorCode::HTTP_MESSAGE_NOT_READABLE, '');
+            }
+            $result = $this->service->create($table, $action, $column);
+            return $this->responder->success($result);
+        }
+
+        public function updateForm(ServerRequestInterface $request): ResponseInterface
+        {
+            $table = RequestUtils::getPathSegment($request, 3);
+            $action = RequestUtils::getPathSegment($request, 4);
+            $name = RequestUtils::getPathSegment($request, 5);
+            if (!$this->service->hasTable($table, $action)) {
+                return $this->responder->error(ErrorCode::TABLE_NOT_FOUND, $table);
+            }
+            $result = $this->service->updateForm($table, $action, $name);
+            return $this->responder->success($result);
+        }
+
+        public function update(ServerRequestInterface $request): ResponseInterface
+        {
+            $table = RequestUtils::getPathSegment($request, 3);
+            $action = RequestUtils::getPathSegment($request, 4);
+            $name = RequestUtils::getPathSegment($request, 5);
+            if (!$this->service->hasTable($table, $action)) {
+                return $this->responder->error(ErrorCode::TABLE_NOT_FOUND, $table);
+            }
+            $column = $request->getParsedBody();
+            if ($column === null) {
+                return $this->responder->error(ErrorCode::HTTP_MESSAGE_NOT_READABLE, '');
+            }
+            $result = $this->service->update($table, $action, $name, $column);
+            return $this->responder->success($result);
+        }
+
+        public function deleteForm(ServerRequestInterface $request): ResponseInterface
+        {
+            $table = RequestUtils::getPathSegment($request, 3);
+            $action = RequestUtils::getPathSegment($request, 4);
+            $name = RequestUtils::getPathSegment($request, 5);
+            if (!$this->service->hasTable($table, 'read')) {
+                return $this->responder->error(ErrorCode::TABLE_NOT_FOUND, $table);
+            }
+            $result = $this->service->deleteForm($table, $action, $name);
+            return $this->responder->success($result);
+        }
+
+        public function delete(ServerRequestInterface $request): ResponseInterface
+        {
+            $table = RequestUtils::getPathSegment($request, 3);
+            $action = RequestUtils::getPathSegment($request, 4);
+            $name = RequestUtils::getPathSegment($request, 5);
+            if (!$this->service->hasTable($table, 'read')) {
+                return $this->responder->error(ErrorCode::TABLE_NOT_FOUND, $table);
+            }
+            $result = $this->service->delete($table, $action, $name);
+            return $this->responder->success($result);
+        }
+
+        public function _list(ServerRequestInterface $request): ResponseInterface
+        {
+            $table = RequestUtils::getPathSegment($request, 3);
+            $action = RequestUtils::getPathSegment($request, 4);
+            if (!$this->service->hasTable($table, $action)) {
+                return $this->responder->error(ErrorCode::TABLE_NOT_FOUND, $table);
+            }
+            $result = $this->service->_list($table, $action);
+            return $this->responder->success($result);
+        }
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Controller/MultiResponder.php
+namespace Tqdev\PhpCrudAdmin\Controller {
+
+    use Psr\Http\Message\ResponseInterface;
+    use Tqdev\PhpCrudApi\Controller\Responder;
+    use Tqdev\PhpCrudApi\Record\Document\ErrorDocument;
+    use Tqdev\PhpCrudApi\Record\ErrorCode;
+    use Tqdev\PhpCrudApi\ResponseFactory;
+    use Tqdev\PhpCrudAdmin\Document\TemplateDocument;
+    use Tqdev\PhpCrudAdmin\Document\CsvDocument;
+
+    class MultiResponder implements Responder
+    {
+        private $variables;
+        private $templatePath;
+
+        public function __construct(string $templatePath)
+        {
+            $this->variables = array();
+            $this->templatePath = $templatePath;
+        }
+
+        public function setVariable(string $name, $value)
+        {
+            $this->variables[$name] = $value;
+        }
+
+        public function error(int $error, string $argument, $details = null): ResponseInterface
+        {
+            $errorCode = new ErrorCode($error);
+            $status = $errorCode->getStatus();
+            $document = new ErrorDocument($errorCode, $argument, $details);
+            $result = new TemplateDocument('layouts/error', 'error/show', $document->serialize());
+            $result->addVariables($this->variables);
+            $result->setTemplatePath($this->templatePath);
+            return ResponseFactory::fromHtml($status, (string) $result);
+        }
+
+        public function success($result): ResponseInterface
+        {
+            if ($result instanceof CsvDocument) {
+                return ResponseFactory::fromCsv(ResponseFactory::OK, (string) $result);
+            } elseif ($result instanceof TemplateDocument) {
+                $result->addVariables($this->variables);
+                $result->setTemplatePath($this->templatePath);
+                return ResponseFactory::fromHtml(ResponseFactory::OK, (string) $result);
+            } else {
+                throw new \Exception('Document type not supported: ' . get_class($result));
+            }
+        }
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Controller/TableController.php
+namespace Tqdev\PhpCrudAdmin\Controller {
+
+    use Psr\Http\Message\ResponseInterface;
+    use Psr\Http\Message\ServerRequestInterface;
+    use Tqdev\PhpCrudApi\Controller\Responder;
+    use Tqdev\PhpCrudApi\Middleware\Router\Router;
+    use Tqdev\PhpCrudApi\Record\ErrorCode;
+    use Tqdev\PhpCrudApi\RequestUtils;
+    use Tqdev\PhpCrudAdmin\Column\TableService;
+
+    class TableController
+    {
+        private $service;
+        private $responder;
+
+        public function __construct(Router $router, Responder $responder, TableService $service)
+        {
+            $router->register('GET', '/admin/table/create', array($this, 'createForm'));
+            $router->register('POST', '/admin/table/create', array($this, 'create'));
+            $router->register('GET', '/admin/table/delete/*', array($this, 'deleteForm'));
+            $router->register('POST', '/admin/table/delete/*', array($this, 'delete'));
+            $router->register('GET', '/admin/table/list', array($this, '_list'));
+            $this->service = $service;
+            $this->responder = $responder;
+        }
+
+        public function createForm(ServerRequestInterface $request): ResponseInterface
+        {
+            $action = RequestUtils::getPathSegment($request, 3);
+            $result = $this->service->createForm($action);
+            return $this->responder->success($result);
+        }
+
+        public function create(ServerRequestInterface $request): ResponseInterface
+        {
+            $action = RequestUtils::getPathSegment($request, 3);
+            $table = $request->getParsedBody();
+            if ($table === null) {
+                return $this->responder->error(ErrorCode::HTTP_MESSAGE_NOT_READABLE, '');
+            }
+            $table['columns'] = [["name" => "id", "type" => "bigint", "pk" => true]];
+            $result = $this->service->create($action, $table);
+            return $this->responder->success($result);
+        }
+
+        public function deleteForm(ServerRequestInterface $request): ResponseInterface
+        {
+            $action = RequestUtils::getPathSegment($request, 3);
+            $name = RequestUtils::getPathSegment($request, 4);
+            if (!$this->service->hasTable($name, 'read')) {
+                return $this->responder->error(ErrorCode::TABLE_NOT_FOUND, $name);
+            }
+            $result = $this->service->deleteForm($action, $name);
+            return $this->responder->success($result);
+        }
+
+        public function delete(ServerRequestInterface $request): ResponseInterface
+        {
+            $action = RequestUtils::getPathSegment($request, 3);
+            $name = RequestUtils::getPathSegment($request, 4);
+            if (!$this->service->hasTable($name, 'read')) {
+                return $this->responder->error(ErrorCode::TABLE_NOT_FOUND, $name);
+            }
+            $result = $this->service->delete($action, $name);
+            return $this->responder->success($result);
+        }
+
+        public function _list(ServerRequestInterface $request): ResponseInterface
+        {
+            $action = RequestUtils::getPathSegment($request, 3);
+            $result = $this->service->_list($action);
+            return $this->responder->success($result);
+        }
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Document/CsvDocument.php
+namespace Tqdev\PhpCrudAdmin\Document {
+
+    use Tqdev\PhpCrudAdmin\Template\Template;
+
+    class CsvDocument
+    {
+        private $variables;
+
+        public function __construct(array $variables)
+        {
+            $this->variables = $variables;
+        }
+
+        public function __toString(): string
+        {
+            $f = fopen('php://memory', 'r+');
+            fputcsv($f, $this->variables['columns']);
+            foreach ($this->variables['records'] as $record) {
+                fputcsv($f, $record);
+            }
+            rewind($f);
+            return stream_get_contents($f);
+        }
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Document/TemplateDocument.php
+namespace Tqdev\PhpCrudAdmin\Document {
+
+    use Tqdev\PhpCrudAdmin\Template\Template;
+
+    class TemplateDocument
+    {
+        private $masterTemplate;
+        private $contentTemplate;
+        private $variables;
+        private $template;
+        private $templatePath;
+
+        public function __construct(string $masterTemplate, string $contentTemplate, array $variables)
+        {
+            $this->masterTemplate = $masterTemplate;
+            $this->contentTemplate = $contentTemplate;
+            $this->variables = $variables;
+            $this->template = new Template('html', $this->getFunctions());
+            $this->templatePath = '';
+        }
+
+        private function getFunctions(): array
+        {
+            return array(
+                'lt' => function ($a, $b) {
+                    return $a < $b;
+                },
+                'gt' => function ($a, $b) {
+                    return $a > $b;
+                },
+                'le' => function ($a, $b) {
+                    return $a <= $b;
+                },
+                'ge' => function ($a, $b) {
+                    return $a >= $b;
+                },
+                'eq' => function ($a, $b) {
+                    return $a == $b;
+                },
+                'add' => function ($a, $b) {
+                    return $a + $b;
+                },
+                'sub' => function ($a, $b) {
+                    return $a - $b;
+                },
+                'prop' => function ($a, $b) {
+                    return $a[$b];
+                },
+                'bool' => function ($a, $b, $c) {
+                    return $a ? $b : $c;
+                },
+                'or' => function ($a, $b) {
+                    return $a ?: $b;
+                },
+            );
+        }
+
+        public function addVariables(array $variables)/*: void*/
+        {
+            $this->variables = array_merge($variables, $this->variables);
+        }
+
+        public function setTemplatePath(string $path)/*: void*/
+        {
+            $this->templatePath = rtrim($path, '/');
+        }
+
+        private function getHtmlFileContents(string $template): string
+        {
+            global $_HTML;
+            if (isset($_HTML[$template])) {
+                return $_HTML[$template];
+            }
+            $filename = $this->templatePath . '/' . $template . '.html';
+            return file_get_contents($filename);
+        }
+
+        public function __toString(): string
+        {
+            $data = $this->variables;
+            $content = $this->getHtmlFileContents($this->contentTemplate);
+            $data['content'] = $this->template->render($content, $data);
+            $master = $this->getHtmlFileContents($this->masterTemplate);
+            return (string) $this->template->render($master, $data);
+        }
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Template/Template.php
+namespace Tqdev\PhpCrudAdmin\Template {
+
+    class Template
+    {
+        private $escape;
+        private $functions;
+
+        public function __construct(string $escape, array $functions)
+        {
+            $this->escape = $escape;
+            $this->functions = $functions;
+        }
+
+        private function escape(string $string): string
+        {
+            switch ($this->escape) {
+                case 'html':
+                    return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+            }
+            return $string;
+        }
+
+        public function render(string $template, array $data): TemplateString
+        {
+            $tokens = $this->tokenize($template);
+            $tree = $this->createSyntaxTree($tokens);
+            $string = $this->renderChildren($tree, $data);
+            return new TemplateString($string);
+        }
+
+        private function createNode(string $type, string $expression)/*: object*/
+        {
+            return (object) array('type' => $type, 'expression' => $expression, 'children' => array(), 'value' => null);
+        }
+
+        private function tokenize(string $template): array
+        {
+            $parts = ['', $template];
+            $tokens = [];
+            while (true) {
+                $parts = explode('{{', $parts[1], 2);
+                $tokens[] = $parts[0];
+                if (count($parts) != 2) {
+                    break;
+                }
+                $parts = $this->explode('}}', $parts[1], 2);
+                $tokens[] = $parts[0];
+                if (count($parts) != 2) {
+                    break;
+                }
+            }
+            return $tokens;
+        }
+
+        private function explode(string $separator, string $str, int $count = -1): array
+        {
+            $tokens = [];
+            $token = '';
+            $quote = '"';
+            $escape = '\\';
+            $escaped = false;
+            $quoted = false;
+            for ($i = 0; $i < strlen($str); $i++) {
+                $c = $str[$i];
+                if (!$quoted) {
+                    if ($c == $quote) {
+                        $quoted = true;
+                    } elseif (substr($str, $i, strlen($separator)) == $separator) {
+                        $tokens[] = $token;
+                        if (count($tokens) == $count - 1) {
+                            $token = substr($str, $i + strlen($separator));
+                            break;
+                        }
+                        $token = '';
+                        $i += strlen($separator) - 1;
+                        continue;
+                    }
+                } else {
+                    if (!$escaped) {
+                        if ($c == $quote) {
+                            $quoted = false;
+                        } elseif ($c == $escape) {
+                            $escaped = true;
+                        }
+                    } else {
+                        $escaped = false;
+                    }
+                }
+                $token .= $c;
+            }
+            $tokens[] = $token;
+            return $tokens;
+        }
+
+        private function createSyntaxTree(array $tokens)/*: object*/
+        {
+            $root = $this->createNode('root', '');
+            $current = $root;
+            $stack = array();
+            foreach ($tokens as $i => $token) {
+                if ($i % 2 == 1) {
+                    if ($token == 'endif') {
+                        $type = 'endif';
+                        $expression = false;
+                    } elseif ($token == 'endfor') {
+                        $type = 'endfor';
+                        $expression = false;
+                    } elseif ($token == 'else') {
+                        $type = 'else';
+                        $expression = false;
+                    } elseif (substr($token, 0, 7) == 'elseif:') {
+                        $type = 'elseif';
+                        $expression = substr($token, 7);
+                    } elseif (substr($token, 0, 3) == 'if:') {
+                        $type = 'if';
+                        $expression = substr($token, 3);
+                    } elseif (substr($token, 0, 4) == 'for:') {
+                        $type = 'for';
+                        $expression = substr($token, 4);
+                    } else {
+                        $type = 'var';
+                        $expression = $token;
+                    }
+                    if (in_array($type, array('endif', 'endfor', 'elseif', 'else'))) {
+                        if (count($stack)) {
+                            $current = array_pop($stack);
+                        }
+                    }
+                    if (in_array($type, array('if', 'for', 'var', 'elseif', 'else'))) {
+                        $node = $this->createNode($type, $expression);
+                        array_push($current->children, $node);
+                    }
+                    if (in_array($type, array('if', 'for', 'elseif', 'else'))) {
+                        array_push($stack, $current);
+                        $current = $node;
+                    }
+                } else {
+                    array_push($current->children, $this->createNode('lit', $token));
+                }
+            }
+            return $root;
+        }
+
+        private function renderChildren(/*object*/$node, array $data): string
+        {
+            $result = '';
+            $ifNodes = array();
+            foreach ($node->children as $child) {
+                switch ($child->type) {
+                    case 'if':
+                        $result .= $this->renderIfNode($child, $data);
+                        $ifNodes = array($child);
+                        break;
+                    case 'elseif':
+                        $result .= $this->renderElseIfNode($child, $ifNodes, $data);
+                        array_push($ifNodes, $child);
+                        break;
+                    case 'else':
+                        $result .= $this->renderElseNode($child, $ifNodes, $data);
+                        $ifNodes = array();
+                        break;
+                    case 'for':
+                        $result .= $this->renderForNode($child, $data);
+                        $ifNodes = array();
+                        break;
+                    case 'var':
+                        $result .= $this->renderVarNode($child, $data);
+                        $ifNodes = array();
+                        break;
+                    case 'lit':
+                        $result .= $child->expression;
+                        $ifNodes = array();
+                        break;
+                }
+            }
+            return $result;
+        }
+
+        private function renderIfNode(/*object*/$node, array $data): string
+        {
+            $parts = $this->explode('|', $node->expression);
+            $path = array_shift($parts);
+            try {
+                $value = $this->resolvePath($path, $data);
+                $value = $this->applyFunctions($value, $parts, $data);
+            } catch (\Throwable $e) {
+                return $this->escape('{{if:' . $node->expression . '!!' . $e->getMessage() . '}}');
+            }
+            $result = '';
+            if ($value) {
+                $result .= $this->renderChildren($node, $data);
+            }
+            $node->value = $value;
+            return $result;
+        }
+
+        private function renderElseIfNode(/*object*/$node, array $ifNodes, array $data): string
+        {
+            if (count($ifNodes) < 1 || $ifNodes[0]->type != 'if') {
+                return $this->escape("{{elseif!!could not find matching `if`}}");
+            }
+            $result = '';
+            $value = false;
+            for ($i = 0; $i < count($ifNodes); $i++) {
+                $value = $value || $ifNodes[$i]->value;
+            }
+            if (!$value) {
+                $parts = $this->explode('|', $node->expression);
+                $path = array_shift($parts);
+                try {
+                    $value = $this->resolvePath($path, $data);
+                    $value = $this->applyFunctions($value, $parts, $data);
+                } catch (\Throwable $e) {
+                    return $this->escape('{{elseif:' . $node->expression . '!!' . $e->getMessage() . '}}');
+                }
+                if ($value) {
+                    $result .= $this->renderChildren($node, $data);
+                }
+            }
+            $node->value = $value;
+            return $result;
+        }
+
+        private function renderElseNode(/*object*/$node, array $ifNodes, array $data): string
+        {
+            if (count($ifNodes) < 1 || $ifNodes[0]->type != 'if') {
+                return $this->escape("{{else!!could not find matching `if`}}");
+            }
+            $result = '';
+            $value = false;
+            for ($i = 0; $i < count($ifNodes); $i++) {
+                $value = $value || $ifNodes[$i]->value;
+            }
+            if (!$value) {
+                $result .= $this->renderChildren($node, $data);
+            }
+            return $result;
+        }
+
+        private function renderForNode(/*object*/$node, array $data): string
+        {
+            $parts = $this->explode('|', $node->expression);
+            $pathParts = $this->explode(':', array_shift($parts), 3);
+            if (count($pathParts) == 2) {
+                list($var, $path) = $pathParts;
+                $key = false;
+            } elseif (count($pathParts) == 3) {
+                list($var, $key, $path) = $pathParts;
+            } else {
+                return $this->escape('{{for:' . $node->expression . '!!' . "for must have `for:var:array` format" . '}}');
+            }
+            try {
+                $value = $this->resolvePath($path, $data);
+                $value = $this->applyFunctions($value, $parts, $data);
+            } catch (\Throwable $e) {
+                return $this->escape('{{for:' . $node->expression . '!!' . $e->getMessage() . '}}');
+            }
+            if (!is_array($value)) {
+                return $this->escape('{{for:' . $node->expression . '!!' . "expression must evaluate to an array" . '}}');
+            }
+            $result = '';
+            foreach ($value as $k => $v) {
+                $data = array_merge($data, $key ? [$var => $v, $key => $k] : [$var => $v]);
+                $result .= $this->renderChildren($node, $data);
+            }
+            return $result;
+        }
+
+        private function renderVarNode(/*object*/$node, array $data): string
+        {
+            $parts = $this->explode('|', $node->expression);
+            $path = array_shift($parts);
+            try {
+                $value = $this->resolvePath($path, $data);
+                $value = $this->applyFunctions($value, $parts, $data);
+            } catch (\Throwable $e) {
+                return $this->escape('{{' . $node->expression . '!!' . $e->getMessage() . '}}');
+            }
+            if ($value instanceof TemplateString) {
+                return $value;
+            }
+            return $this->escape((string) $value);
+        }
+
+        private function resolvePath(string $path, array $data)/*: object*/
+        {
+            $current = $data;
+            foreach ($this->explode('.', $path) as $p) {
+                if (!array_key_exists($p, $current)) {
+                    throw new \Exception("path `$p` not found");
+                }
+                $current = &$current[$p];
+            }
+            return $current;
+        }
+
+        private function applyFunctions(/*object*/$value, array $parts, array $data)/*: object*/
+        {
+            foreach ($parts as $part) {
+                $function = $this->explode('(', rtrim($part, ')'), 2);
+                $f = $function[0];
+                $arguments = isset($function[1]) ? $this->explode(',', $function[1]) : array();
+                $arguments = array_map(function ($argument) use ($data) {
+                    $argument = trim($argument);
+                    $len = strlen($argument);
+                    if ($argument[0] == '"' && $argument[$len - 1] == '"') {
+                        $argument = stripcslashes(substr($argument, 1, $len - 2));
+                    } else if (!is_numeric($argument)) {
+                        $argument = $this->resolvePath($argument, $data);
+                    }
+                    return $argument;
+                }, $arguments);
+                array_unshift($arguments, $value);
+                if (isset($this->functions[$f])) {
+                    $value = call_user_func_array($this->functions[$f], $arguments);
+                } else {
+                    throw new \Exception("function `$f` not found");
+                }
+            }
+            return $value;
+        }
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Template/TemplateString.php
+namespace Tqdev\PhpCrudAdmin\Template {
+
+    class TemplateString
+    {
+        private $string;
+
+        public function __construct(string $string)
+        {
+            $this->string = $string;
+        }
+
+        public function __toString(): string
+        {
+            return $this->string;
+        }
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Admin.php
+namespace Tqdev\PhpCrudAdmin {
+
+    use Psr\Http\Message\ResponseInterface;
+    use Psr\Http\Message\ServerRequestInterface;
+    use Psr\Http\Server\RequestHandlerInterface;
+    use Tqdev\PhpCrudApi\Cache\CacheFactory;
+    use Tqdev\PhpCrudApi\Middleware\Router\SimpleRouter;
+    use Tqdev\PhpCrudApi\Record\ErrorCode;
+    use Tqdev\PhpCrudApi\ResponseUtils;
+    use Tqdev\PhpCrudAdmin\Client\CrudApi;
+    use Tqdev\PhpCrudAdmin\Column\DefinitionService;
+    use Tqdev\PhpCrudAdmin\Controller\MultiResponder;
+    use Tqdev\PhpCrudAdmin\Controller\ColumnController;
+    use Tqdev\PhpCrudAdmin\Controller\TableController;
+    use Tqdev\PhpCrudAdmin\Column\ColumnService;
+    use Tqdev\PhpCrudAdmin\Column\TableService;
+    use Tqdev\PhpCrudAdmin\Client\CurlCaller;
+    use Tqdev\PhpCrudAdmin\Client\LocalCaller;
+
+    class Admin implements RequestHandlerInterface
+    {
+        private $router;
+        private $responder;
+        private $debug;
+
+        public function __construct(Config $config)
+        {
+            $caller = new LocalCaller($config->getApi());
+            if ($config->getUrl()) {
+                $caller = new CurlCaller($config->getUrl());
+            }
+            $api = new CrudApi($caller);
+            $prefix = sprintf('PhpCrudAdmin-%s-%s-', substr(md5($config->getUrl()), 0, 12), substr(md5(__FILE__), 0, 12));
+            $cache = CacheFactory::create($config->getCacheType(), $prefix, $config->getCachePath());
+            $definition = new DefinitionService($api);
+            $responder = new MultiResponder($config->getTemplatePath());
+            $router = new SimpleRouter($config->getBasePath(), $responder, $cache, $config->getCacheTime(), $config->getDebug());
+            $responder->setVariable('base', $router->getBasePath());
+            $responder->setVariable('menu', $definition->getTableNames());
+            $responder->setVariable('table', '');
+            foreach ($config->getControllers() as $controller) {
+                switch ($controller) {
+                    case 'columns':
+                        $columns = new ColumnService($api, $definition);
+                        new ColumnController($router, $responder, $columns);
+                        break;
+                    case 'tables':
+                        $tables = new TableService($api, $definition);
+                        new TableController($router, $responder, $tables);
+                        break;
+                }
+            }
+            $this->router = $router;
+            $this->responder = $responder;
+            $this->debug = $config->getDebug();
+        }
+
+        private function addParsedBody(ServerRequestInterface $request): ServerRequestInterface
+        {
+            $body = $request->getBody();
+            if ($body->isReadable() && $body->isSeekable()) {
+                $contents = $body->getContents();
+                $body->rewind();
+                if ($contents) {
+                    parse_str($contents, $parsedBody);
+                    $request = $request->withParsedBody($parsedBody);
+                }
+            }
+            return $request;
+        }
+
+        public function handle(ServerRequestInterface $request): ResponseInterface
+        {
+            $response = null;
+            try {
+                $response = $this->router->route($this->addParsedBody($request));
+            } catch (\Throwable $e) {
+                $response = $this->responder->error(ErrorCode::ERROR_NOT_FOUND, $e->getMessage());
+                if ($this->debug) {
+                    $response = ResponseUtils::addExceptionHeaders($response, $e);
+                }
+            }
+            return $response;
+        }
+    }
+}
+
+// file: src/Tqdev/PhpCrudAdmin/Config.php
+namespace Tqdev\PhpCrudAdmin {
+
+    class Config
+    {
+        private $values = [
+            'url' => '',
+            'api' => [],
+            'definition' => '',
+            'controllers' => 'columns,tables',
+            'cacheType' => 'TempFile',
+            'cachePath' => '',
+            'cacheTime' => 10,
+            'debug' => false,
+            'basePath' => '',
+            'templatePath' => '.',
+        ];
+
+        public function __construct(array $values)
+        {
+            $newValues = array_merge($this->values, $values);
+            $diff = array_diff_key($newValues, $this->values);
+            if (!empty($diff)) {
+                $key = array_keys($diff)[0];
+                throw new \Exception("Config has invalid value '$key'");
+            }
+            $this->values = $newValues;
+        }
+
+        public function getControllers(): array
+        {
+            return array_map('trim', explode(',', $this->values['controllers']));
+        }
+
+        public function getUrl(): string
+        {
+            return $this->values['url'];
+        }
+
+        public function getApi(): array
+        {
+            return $this->values['api'];
+        }
+
+        public function getDefinition(): string
+        {
+            return $this->values['definition'];
+        }
+
+        public function getCacheType(): string
+        {
+            return $this->values['cacheType'];
+        }
+
+        public function getCachePath(): string
+        {
+            return $this->values['cachePath'];
+        }
+
+        public function getCacheTime(): int
+        {
+            return $this->values['cacheTime'];
+        }
+
+        public function getDebug(): bool
+        {
+            return $this->values['debug'];
+        }
+
+        public function getBasePath(): string
+        {
+            return $this->values['basePath'];
+        }
+
+        public function getTemplatePath(): string
+        {
+            return $this->values['templatePath'];
+        }
+    }
+}
+
+// file: src/index.php
+namespace Tqdev\PhpCrudAdmin {
+
+    use Tqdev\PhpCrudAdmin\Admin;
+    use Tqdev\PhpCrudAdmin\Config;
+    use Tqdev\PhpCrudApi\RequestFactory;
     use Tqdev\PhpCrudApi\ResponseUtils;
 
     $config = new Config([
-        'driver' => 'mysql',
-        'address' => '127.0.0.1',
-        'port' => '3306',
-        'username' => 'root',
-        'password' => '',
-        'database' => 'custom_modeler',
-        // 'debug' => false
+        'api' => [
+            'username' => 'root',
+            'password' => '',
+            'database' => 'custom_modeler',
+            'controllers' => 'columns',
+        ],
+        'templatePath' => '../templates',
     ]);
     $request = RequestFactory::fromGlobals();
-    $api = new Api($config);
-    $response = $api->handle($request);
+    $ui = new Admin($config);
+    $response = $ui->handle($request);
     ResponseUtils::output($response);
-
-    //file_put_contents('request.log',RequestUtils::toString($request)."===\n",FILE_APPEND);
-    //file_put_contents('request.log',ResponseUtils::toString($response)."===\n",FILE_APPEND);
 }
